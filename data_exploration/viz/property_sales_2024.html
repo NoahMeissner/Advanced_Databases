@@ -1,0 +1,166 @@
+<title>NSW Property Sales — 2024 Sample</title>
+<style>
+:root{
+  --paper:#f4f2ec;--ink:#1c2530;--ink-soft:#4a5563;--line:#d9d4c8;--card:#fffefb;--slate:#e9e6dd;
+  --teal:#0e7c86;--ochre:#c06a24;--good:#2f7d4f;--warn:#b98900;--crit:#b23b3b;--accent:#0e7c86;
+}
+@media (prefers-color-scheme:dark){:root{
+  --paper:#12161b;--ink:#e7ebef;--ink-soft:#9aa6b2;--line:#2a323c;--card:#171c22;--slate:#1e242c;
+  --teal:#38c4cf;--ochre:#e79657;--good:#4fbc7c;--warn:#d9a520;--crit:#e06a6a;--accent:#38c4cf;}}
+:root[data-theme="dark"]{--paper:#12161b;--ink:#e7ebef;--ink-soft:#9aa6b2;--line:#2a323c;--card:#171c22;--slate:#1e242c;--teal:#38c4cf;--ochre:#e79657;--good:#4fbc7c;--warn:#d9a520;--crit:#e06a6a;--accent:#38c4cf;}
+:root[data-theme="light"]{--paper:#f4f2ec;--ink:#1c2530;--ink-soft:#4a5563;--line:#d9d4c8;--card:#fffefb;--slate:#e9e6dd;--teal:#0e7c86;--ochre:#c06a24;--good:#2f7d4f;--warn:#b98900;--crit:#b23b3b;--accent:#0e7c86;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1080px;margin:0 auto;padding:40px 24px 80px}
+header{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:26px}
+.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:600;margin:0 0 10px}
+h1{font-size:clamp(27px,4vw,40px);line-height:1.08;margin:0 0 14px;letter-spacing:-.02em;text-wrap:balance;font-weight:750}
+.lede{font-size:16.5px;color:var(--ink-soft);max-width:66ch;margin:0}
+.lede b{color:var(--ink);font-weight:650}
+h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:44px 0 16px;font-weight:600;display:flex;align-items:center;gap:10px}
+h2::after{content:"";flex:1;height:1px;background:var(--line)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.stat .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:6px}
+.stat .v{font-size:24px;font-weight:750;letter-spacing:-.01em}
+.stat .v small{font-size:14px;font-weight:600;color:var(--ink-soft)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 18px 14px}
+.panel h3{margin:0 0 4px;font-size:15px;letter-spacing:-.01em}
+.panel .sub{margin:0 0 16px;font-size:12.5px;color:var(--ink-soft)}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.bars{display:flex;flex-direction:column;gap:7px}
+.brow{display:grid;grid-template-columns:118px 1fr auto;gap:10px;align-items:center;font-size:12.5px}
+.brow .lbl{color:var(--ink);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .track{background:var(--slate);border-radius:4px;height:9px;overflow:hidden}
+.brow .fill{height:100%;border-radius:4px}
+.brow .n{color:var(--ink-soft);font-weight:600;min-width:44px;text-align:right}
+.callout{background:color-mix(in srgb,var(--warn) 12%,var(--card));border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));border-radius:10px;padding:16px 18px;display:flex;gap:13px;align-items:flex-start}
+.callout .dot{width:9px;height:9px;border-radius:50%;background:var(--warn);margin-top:6px;flex:none}
+.callout b{color:var(--ink)}
+.callout p{margin:0;font-size:13.5px;color:var(--ink-soft)}
+.tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+td.num{text-align:right}
+tr:last-child td{border-bottom:none}
+.pill{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--slate);color:var(--ink-soft)}
+.pill.res{background:color-mix(in srgb,var(--teal) 16%,transparent);color:var(--teal)}
+.pill.vac{background:color-mix(in srgb,var(--ochre) 16%,transparent);color:var(--ochre)}
+footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-soft)}
+a{color:var(--accent)}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">Live sample · Valuer General bulk PSI · yearly/2024.zip</p>
+  <h1>What NSW property sales actually look like</h1>
+  <p class="lede">Pulled the 2024 annual file (14&nbsp;MB → 53 weekly zips → per-LGA <span class="mono">.DAT</span>), parsed and <b>de-duplicated</b> every sale in the browser. <b>193,837</b> real transactions — the ground-truth label the model regresses against. Prices are contract prices; dates are contract dates.</p>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<div class="callout" style="margin-top:22px">
+  <span class="dot"></span>
+  <p><b>De-dup is mandatory.</b> Weekly files reissue sales for weeks after registration, so a raw sum double-counts. Before dedup Merrylands showed <span class="mono">12,558</span> sales; keyed on <span class="mono">district+dealing-number</span> it drops to <span class="mono">983</span>. <b>22,955</b> duplicate rows removed here (11% of raw).</p>
+</div>
+
+<h2>Price distribution</h2>
+<div class="panel">
+  <h3>Sale price — all NSW, 2024</h3>
+  <p class="sub">Count per price band. Median <b>$870k</b>, but a long luxury tail runs to $862M (a single commercial sale).</p>
+  <svg id="hist" viewBox="0 0 720 240" role="img" aria-label="Price histogram"></svg>
+</div>
+
+<h2>When &amp; where</h2>
+<div class="two">
+  <div class="panel">
+    <h3>Sales volume by month</h3>
+    <p class="sub">By contract month. Dec collapses — registration lag, not a market crash.</p>
+    <svg id="line" viewBox="0 0 360 200" role="img" aria-label="Monthly volume"></svg>
+  </div>
+  <div class="panel">
+    <h3>Top suburbs by volume</h3>
+    <p class="sub">Growth corridors dominate — Austral, Box Hill, Oran Park, Rouse Hill.</p>
+    <div class="bars" id="subs"></div>
+  </div>
+</div>
+
+<h2>Composition</h2>
+<div class="two">
+  <div class="panel">
+    <h3>Property type</h3>
+    <p class="sub">Nature of the sold property.</p>
+    <div class="bars" id="nat"></div>
+  </div>
+  <div class="panel">
+    <h3>Zoning</h3>
+    <p class="sub"><b>39% blank</b> — zoning is unreliable in PSI; derive it from a planning layer instead.</p>
+    <div class="bars" id="zone"></div>
+  </div>
+</div>
+
+<h2>Raw records — decoded</h2>
+<div class="tablewrap">
+<table><thead><tr>
+<th>No</th><th>Street</th><th>Suburb</th><th>PC</th><th>Area</th><th>Contract</th><th class="num">Price</th><th>Zone</th><th>Type</th>
+</tr></thead><tbody id="rows"></tbody></table>
+</div>
+
+<footer>
+Source: NSW Valuer General bulk Property Sales Information, <span class="mono">/__psi/yearly/2024.zip</span> · CC BY-NC-ND 4.0. Parsed live in-browser, no file saved. Contract price/date shown. No lat/lon in source — geocode on street+suburb+postcode to map. <b>Next:</b> a pull-all + dedup + Parquet pipeline across 1990–2026.
+</footer>
+</div>
+
+<script>
+const D={"total":193837,"dupes":22955,"pct":{"min":1000,"p10":395000,"p25":600000,"median":870000,"p75":1400000,"p90":2420000,"p99":9600000,"max":862441438},"hist":[["<200k",5804],["200-400k",14010],["400-600k",27858],["600-800k",36176],["800k-1M",30663],["1-1.25M",20486],["1.25-1.5M",14689],["1.5-2M",16768],["2-3M",14197],["3-5M",8007],["5M+",5179]],"topSuburbs":[["PARRAMATTA",1234],["PORT MACQUARIE",1231],["DUBBO",1149],["AUSTRAL",1147],["BLACKTOWN",1145],["ORANGE",1139],["CASTLE HILL",1084],["BANKSTOWN",1015],["MERRYLANDS",983],["ZETLAND",964],["ROUSE HILL",946],["BOX HILL",870],["LIVERPOOL",852],["ORAN PARK",834],["WOLLONGONG",830]],"natures":[["RESIDENCE",168990],["VACANT LAND",14637],["COMMERCIAL",4554],["FARM",2802],["WAREHOUSE",808],["SHOP",566],["OFFICE",551],["FACTORY",461]],"zones":[["(blank)",75572],["R2",59837],["R1",24248],["R3",7876],["RU1",4838],["RU5",4016],["C4",3413],["R5",2936],["RU2",1710],["E4",1398],["E1",1183],["MU1",1109]],"monthly":[["2024-01",8308],["2024-02",15846],["2024-03",17089],["2024-04",15293],["2024-05",16689],["2024-06",14044],["2024-07",15054],["2024-08",14773],["2024-09",13947],["2024-10",13695],["2024-11",9361],["2024-12",1537]],"sample":[{"no":"176","st":"LAKE RD","sub":"ELRINGTON","pc":"2325","area":"25.15H","contract":"20231219","price":1330000,"zone":"RU2","nature":"RESIDENCE"},{"no":"2","st":"KING ST","sub":"BRANXTON","pc":"2335","area":"1864M","contract":"20231115","price":850000,"zone":"R3","nature":"RESIDENCE"},{"no":"275","st":"MAITLAND RD","sub":"CESSNOCK","pc":"2325","area":"379.8M","contract":"20231026","price":500000,"zone":"R3","nature":"SHOP"},{"no":"19","st":"DEAKIN ST","sub":"KURRI KURRI","pc":"2327","area":"1682M","contract":"20231103","price":575000,"zone":"R2","nature":"RESIDENCE"},{"no":"700","st":"MILSONS ARM RD","sub":"WOLLOMBI","pc":"2325","area":"31.77H","contract":"20231218","price":236667,"zone":"RU2","nature":"RESIDENCE"},{"no":"12","st":"SHANNON AVE","sub":"MERRYLANDS","pc":"2160","area":"556.4M","contract":"20240224","price":1320000,"zone":"R2","nature":"RESIDENCE"},{"no":"39","st":"DALWOOD RD","sub":"EAST BRANXTON","pc":"2335","area":"600M","contract":"20260704","price":815000,"zone":"R2","nature":"RESIDENCE"},{"no":"14/23","st":"OXFORD ST","sub":"MERRYLANDS","pc":"2160","area":"","contract":"20240412","price":450000,"zone":"","nature":"RESIDENCE"},{"no":"10","st":"WILSON ST","sub":"KEARSLEY","pc":"2325","area":"2157M","contract":"20240708","price":470000,"zone":"R5","nature":"VACANT LAND"},{"no":"31","st":"BARNHILL ACCS","sub":"ROTHBURY","pc":"2320","area":"610.5M","contract":"20240622","price":1650000,"zone":"SP3","nature":"RESIDENCE"}]};
+const $=id=>document.getElementById(id);
+const fmt=n=>n>=1e6?'$'+(n/1e6).toFixed(n<1e7?2:1)+'M':n>=1e3?'$'+Math.round(n/1e3)+'k':'$'+n;
+const cs=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+// stats
+const P=D.pct;
+const cards=[['Sales (deduped)',D.total.toLocaleString()],['Median price','$'+(P.median/1000)+'k'],
+ ['25th–75th','$'+(P.p25/1000)+'k–$'+(P.p75/1000|0)/1+'k'],['Top 10%','≥ $'+(P.p90/1e6).toFixed(2)+'M'],['Dupes removed',D.dupes.toLocaleString()]];
+$('stats').innerHTML=cards.map(([k,v])=>`<div class="stat"><div class="k">${k}</div><div class="v mono">${v}</div></div>`).join('');
+// histogram
+(()=>{
+  const svg=$('hist'),W=720,H=240,pl=44,pb=44,pt=10;
+  const max=Math.max(...D.hist.map(d=>d[1])), bw=(W-pl)/D.hist.length;
+  let s='';
+  for(let g=0;g<=4;g++){const y=pt+(H-pt-pb)*g/4;const val=Math.round(max*(1-g/4));
+    s+=`<line x1="${pl}" y1="${y}" x2="${W}" y2="${y}" stroke="${cs('--line')}" stroke-width="1"/>`;
+    s+=`<text x="${pl-8}" y="${y+4}" text-anchor="end" font-size="10" fill="${cs('--ink-soft')}" class="mono">${val>=1000?(val/1000|0)+'k':val}</text>`;}
+  D.hist.forEach((d,i)=>{const h=(H-pt-pb)*d[1]/max;const x=pl+i*bw+3;const y=H-pb-h;
+    s+=`<rect x="${x}" y="${y}" width="${bw-6}" height="${h}" rx="2" fill="${cs('--teal')}"/>`;
+    s+=`<text x="${x+(bw-6)/2}" y="${H-pb+14}" text-anchor="end" font-size="9.5" fill="${cs('--ink-soft')}" transform="rotate(-35 ${x+(bw-6)/2} ${H-pb+14})">${d[0]}</text>`;});
+  svg.innerHTML=s;
+})();
+// line
+(()=>{
+  const svg=$('line'),W=360,H=200,pl=34,pb=30,pt=10;
+  const m=D.monthly,max=Math.max(...m.map(d=>d[1])),iw=(W-pl-8)/(m.length-1);
+  const X=i=>pl+i*iw, Y=v=>pt+(H-pt-pb)*(1-v/max);
+  let s='';
+  for(let g=0;g<=3;g++){const y=pt+(H-pt-pb)*g/3;s+=`<line x1="${pl}" y1="${y}" x2="${W}" y2="${y}" stroke="${cs('--line')}"/>`;}
+  const pts=m.map((d,i)=>`${X(i)},${Y(d[1])}`).join(' ');
+  s+=`<polyline points="${pts}" fill="none" stroke="${cs('--ochre')}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  m.forEach((d,i)=>{s+=`<circle cx="${X(i)}" cy="${Y(d[1])}" r="2.6" fill="${cs('--ochre')}"/>`;
+    if(i%2===0)s+=`<text x="${X(i)}" y="${H-pb+14}" text-anchor="middle" font-size="9" fill="${cs('--ink-soft')}">${d[0].slice(5)}</text>`;});
+  svg.innerHTML=s;
+})();
+// horizontal bars
+function bars(el,data,color){const max=Math.max(...data.map(d=>d[1]));
+  $(el).innerHTML=data.map(([l,n])=>`<div class="brow"><span class="lbl">${l}</span><span class="track"><span class="fill" style="width:${(n/max*100).toFixed(1)}%;background:${cs(color)}"></span></span><span class="n mono">${n.toLocaleString()}</span></div>`).join('');}
+bars('subs',D.topSuburbs.slice(0,12),'--accent');
+bars('nat',D.natures,'--teal');
+bars('zone',D.zones.slice(0,10),'--ochre');
+// table
+$('rows').innerHTML=D.sample.map(r=>{
+  const cls=r.nature==='RESIDENCE'?'res':r.nature==='VACANT LAND'?'vac':'';
+  const dt=r.contract.length>=8?r.contract.slice(0,4)+'-'+r.contract.slice(4,6)+'-'+r.contract.slice(6,8):r.contract;
+  return `<tr><td class="mono">${r.no||'—'}</td><td>${r.st}</td><td>${r.sub}</td><td class="mono">${r.pc}</td><td class="mono">${r.area||'—'}</td><td class="mono">${dt}</td><td class="num mono">${fmt(r.price)}</td><td class="mono">${r.zone||'—'}</td><td><span class="pill ${cls}">${r.nature}</span></td></tr>`;
+}).join('');
+</script>
