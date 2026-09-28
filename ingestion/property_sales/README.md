@@ -98,12 +98,20 @@ contracts from 2020 or earlier that settled later are included (26,596 from
 
 ## Gotchas found in the real files (and what the pipeline does)
 
-1. **Sales are republished ("restated").** 3.0% of parcel-sales get a second
-   version. The change is almost always a **sale code added later**: 19,897
-   cases, a median 28 days after first publication. Price or date changes are
-   rare (2 price, 21 contract date). A report built from the first version
-   would treat those sales as ordinary. → Every version is kept with
-   `load_from`/`load_to`. This is the bitemporal evidence for criterion C2.
+1. **Sales are republished ("restated"), but almost all of it is one event.**
+   2.9% of parcel-sales have a second version, and 99% of those changes are a
+   sale code being filled in. They are **not** a routine late correction. 94%
+   of all restatements come from just two weekly files, `20250811` and
+   `20250922`. Those files republished the previous weeks' sales with sale
+   codes filled in (88% of the records in `20250811` have one). Every other
+   file has a code on under 0.3% of its records. Without those two files,
+   only 0.16% of parcel-sales are ever restated. Price or date changes are
+   rare (2 price, 21 contract date). So `sale_code` coverage depends on
+   *when* a sale was published: sales first published around June–September
+   2025 mostly have codes, other sales mostly don't. Don't use it as a
+   reliable non-arm's-length filter. → Every version is kept with
+   `load_from`/`load_to`, so a report can be rebuilt as of any date. This is
+   the bitemporal evidence for criterion C2.
 2. **Identical republications.** The same parcel-sale is republished for
    weeks (one off-the-plan sale appears in 66 weekly files), sometimes twice
    in one file. → A hashdiff over the descriptive fields means only real
@@ -116,11 +124,14 @@ contracts from 2020 or earlier that settled later are included (26,596 from
 4. **Blank property ids.** Some new strata lots are published before they're
    in the Register of Land Values, or lose the id in a later file. → The
    pipeline matches the row back to its parcel-sale by dealing number plus
-   hashdiff or legal description (78 resolved). 119 remain blank and are
-   left out of the vault hubs.
+   hashdiff or legal description (78 resolved). On archives to 2026-09-28,
+   340 remain blank and are left out of the vault hubs. 221 of them are from
+   the four newest weekly files, so the count is mostly recent sales still
+   waiting for an id and drops as later files fill it in.
 5. **A stray CR inside a record** (e.g. `2023.zip/20230313.zip/210_…DAT`)
    breaks `str.splitlines()` and throws off the Z trailer count. → Lines are split on LF only.
-   All 6,400+ files now pass the trailer check (`_manifest.csv`).
+   All 36,794 weekly district files in the 44 archives now pass the trailer
+   check (`_manifest.csv`: 0 mismatches, 0 malformed lines).
 6. **Multi-parcel sales repeat the full price on every parcel.** Use
    `is_standard_sale` or `parcels_in_sale = 1` before computing medians.
 7. **Zoning codes were reused in 2022** (e.g. `E1` changed from national park to
@@ -128,6 +139,29 @@ contracts from 2020 or earlier that settled later are included (26,596 from
 8. `data_exploration/parse_psi.py` read `nature` and `dealing_number` from
    the wrong fields (off by one), so its de-dup never used the dealing
    number. This PR fixes those indexes.
+
+## Known data gaps
+
+These are flagged or left as they are, never silently dropped. Figures are
+from archives up to 2026-09-28 (685,187 current parcel-sales).
+
+| Gap | Size | Impact / what to do |
+|---|---:|---|
+| No coordinates in PSI | all rows | Location has to come from G-NAF (address) or DCDB (`lotidstring`); neither join is built yet |
+| Zoning blank | 50.2% | And codes were reused in 2022. Take zoning from a planning layer instead |
+| Sale code only filled in by two batch files | 3.0% have one | Coverage depends on publication date (gotcha 1), so it can't reliably separate non-arm's-length sales |
+| Multi-parcel dealings | 4.7% | Full price repeated on each parcel; excluded by `is_standard_sale` |
+| Part-interest sales | 0.3% | Price is for a share, not the whole property; excluded by `is_standard_sale` |
+| Blank property id | 340 | Left out of the vault hubs; mostly recent sales (gotcha 4) |
+| Blank postcode | 2,124 | Weakens the G-NAF address match; fall back to `lotidstring` |
+| Street type not parsed to a G-NAF code | 1.4% | Unusual or misspelt types; match on street name + locality, or use lot/plan |
+| Blank locality | 263 | Can't be mapped by suburb; lot/plan is the only location key |
+| Contract or settlement date unusable | 121 flagged (`flag_bad_date`) | Excluded from standard sales |
+| Recent months incomplete | last ~7 months | 10% of sales are first published more than 207 days after contract (off-the-plan), so recent volumes and medians keep moving. Compare like with like, or query as of a fixed date |
+| Contracts before 2021 | 34,767 | Included because selection is by publication date; filter on `contract_year` |
+| No published code lists for `sale_code`, `component_code` or `primary_purpose` | – | Values are shown as published; meanings are inferred |
+| Licence wording conflicts | – | The zips say CC BY, the nsw.gov.au page says CC BY-NC-ND. Raw data stays out of git; check before publishing derived data |
+| Scripted download blocked | – | Cloudflare returns 403 to scripts; archives have to be fetched in a browser (see "Run it") |
 
 ## Linking to the other sources (entity resolution)
 
