@@ -1,0 +1,131 @@
+district_code,district_name,in_gccsa,in_gsc33
+001,Cessnock,0,0
+002,Dungog,0,0
+004,Lake Macquarie,0,0
+005,Maitland,0,0
+007,Muswellbrook,0,0
+008,Newcastle,0,0
+010,Port Stephens,0,0
+012,Singleton,0,0
+018,Bega Valley,0,0
+042,Cowra,0,0
+043,Weddin,0,0
+050,Albury,0,0
+051,Berrigan,0,0
+052,Carrathool,0,0
+054,Coolamon,0,0
+061,Junee,0,0
+065,Leeton,0,0
+066,Lockhart,0,0
+070,Narrandera,0,0
+074,Griffith,0,0
+081,The Hills Shire,1,1
+082,Hornsby,1,1
+083,Hunters Hill,1,1
+084,Ku-ring-gai,1,1
+085,Lane Cove,1,1
+087,Mosman,1,1
+088,North Sydney,1,1
+090,Ryde,1,1
+092,Willoughby,1,1
+097,Eurobodalla,0,0
+098,Kiama,0,0
+100,Shellharbour,0,0
+101,Shoalhaven,0,0
+102,Wingecarribee,0,0
+103,Wollongong,0,0
+109,Cabonne,0,0
+116,Parkes,0,0
+117,Forbes,0,0
+118,Blayney,0,0
+123,Oberon,0,0
+124,Orange,0,0
+137,Burwood,1,1
+139,Canada Bay,1,1
+143,Strathfield,1,1
+144,Sutherland,1,1
+148,Ballina,0,0
+149,Bellingen,0,0
+150,Byron,0,0
+151,Richmond Valley,0,0
+152,Coffs Harbour,0,0
+157,Kempsey,0,0
+158,Kyogle,0,0
+159,Lismore,0,0
+164,Nambucca,0,0
+171,Tweed,0,0
+187,Gunnedah,0,0
+188,Inverell,0,0
+192,Moree Plains,0,0
+199,Uralla,0,0
+207,Randwick,1,1
+209,Waverley,1,1
+210,Woollahra,1,1
+214,Blacktown,1,1
+216,Blue Mountains,1,1
+217,Camden,1,1
+218,Campbelltown,1,1
+219,Hawkesbury,1,1
+220,Fairfield,1,1
+222,Lithgow,0,0
+223,Liverpool,1,1
+224,Penrith,1,1
+226,Wollondilly,1,1
+230,Balranald,0,0
+231,Bland,0,0
+232,Bogan,0,0
+233,Brewarrina,0,0
+234,Broken Hill,0,0
+235,Central Darling,0,0
+236,Cobar,0,0
+238,Coonamble,0,0
+239,Bourke,0,0
+240,Gilgandra,0,0
+243,Hay,0,0
+244,Lachlan,0,0
+247,Narrabri,0,0
+250,Tenterfield,0,0
+251,Narromine,0,0
+252,Walcha,0,0
+253,Walgett,0,0
+254,Warren,0,0
+255,Wentworth,0,0
+257,Armidale Regional,0,0
+258,Canterbury-Bankstown,1,1
+259,Central Coast,1,0
+260,City of Parramatta,1,1
+261,Cumberland,1,1
+262,Edward River,0,0
+263,Federation,0,0
+264,Georges River,1,1
+265,Cootamundra-Gundagai Regional,0,0
+266,Hilltops,0,0
+267,Inner West,1,1
+268,Mid-Coast,0,0
+269,Murray River,0,0
+270,Murrumbidgee,0,0
+271,Northern Beaches,1,1
+272,Queanbeyan-Palerang Regional,0,0
+273,Snowy Monaro Regional,0,0
+274,Snowy Valleys,0,0
+275,Dubbo Regional,0,0
+276,Bayside,1,1
+300,Gwydir,0,0
+301,Liverpool Plains,0,0
+302,Glen Innes Severn,0,0
+303,Clarence Valley,0,0
+511,Upper Hunter,0,0
+526,Upper Lachlan,0,0
+528,Yass Valley,0,0
+529,Goulburn Mulwaree,0,0
+537,Warrumbungle,0,0
+538,Temora,0,0
+560,Greater Hume,0,0
+575,Wagga Wagga,0,0
+608,Bathurst Regional,0,0
+620,Mid-Western Regional,0,0
+656,Port Macquarie-Hastings,0,0
+666,Tamworth Regional,0,0
+708,City of Sydney,1,1
+902,Unincorporated Area,0,0
+903,Unincorporated Sydney Harbour,1,1
