@@ -41,8 +41,8 @@ FIELDS = {
     "settlement_date": 14,
     "price": 15,
     "zoning": 16,
-    "nature": 18,
-    "dealing_number": 24,
+    "nature": 17,
+    "dealing_number": 23,
 }
 OUT_COLUMNS = list(FIELDS)
 
