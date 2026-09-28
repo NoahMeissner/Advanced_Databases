@@ -6,6 +6,7 @@ Pipeline stages (run from the repository root):
     python -m ingestion.property_sales.extract     # zips -> landing CSV
     python -m ingestion.property_sales.transform   # landing -> staging CSVs
     python -m ingestion.property_sales.psi_profile # data-quality profile
+    python -m ingestion.property_sales.dashboard   # HTML dashboard + 3D map
 
 Only the Python standard library is used, so the repo's pylint CI needs no
 extra dependencies.

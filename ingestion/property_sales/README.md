@@ -21,6 +21,7 @@ python -m ingestion.property_sales.download      # tries each zip; writes manual
 python -m ingestion.property_sales.extract       # --region greater_sydney (default) | gsc33 | nsw
 python -m ingestion.property_sales.transform
 python -m ingestion.property_sales.psi_profile --out data/property_sales/profile.md
+python -m ingestion.property_sales.dashboard    # -> data/property_sales/dashboard.html
 
 psql -d suburblens -f ingestion/property_sales/sql/psi_schema.sql
 psql -d suburblens -f ingestion/property_sales/sql/psi_load.sql
@@ -34,6 +35,15 @@ links, save the zips into `data/property_sales/raw/`, and run `extract`.
 
 Runtime on a laptop for all 2021–2026 archives (76 MB of zips): extract takes about 30 s,
 transform about 2 min, and the Postgres load about 2 min.
+
+`dashboard` (about 25 s) writes one self-contained HTML page. It includes monthly
+medians, a deck.gl 3D map of localities, district medians and growth, publication lag,
+as-of cohort curves (what was known about a contract quarter N weeks later), and
+restatements by publication file. Only aggregates are inlined, never individual
+sales. Localities are placed at their NSW POI gazetteer point, cached in
+`data/property_sales/places.json` on first run, or at their postcode centroid when
+the gazetteer has no match. Open the page in a browser; the map needs the CDN scripts
+(serve with `python -m http.server` if your browser blocks them on `file://`).
 
 ## The source
 
@@ -154,6 +164,7 @@ contracts from 2020 or earlier that settled later are included (26,596 from
 | `transform.py` | landing → `sale_versions`, `sales_current` |
 | `address.py` | G-NAF address split, lot/plan parser |
 | `psi_profile.py` | the stats above |
+| `dashboard.py`, `dashboard_template.html` | aggregates → self-contained HTML dashboard + 3D map |
 | `reference/psi_districts.csv` | 130 PSI districts → LGA + Greater Sydney flags |
 | `sql/psi_schema.sql`, `sql/psi_load.sql` | Postgres raw vault + views, idempotent load |
 
