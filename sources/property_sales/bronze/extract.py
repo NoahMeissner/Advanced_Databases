@@ -1,4 +1,4 @@
-"""Extract PSI archives into an append-only landing layer (one CSV per zip).
+"""Extract weekly PSI zips into an append-only landing layer (one CSV per week).
 
 Each B record becomes one row, exactly as published -- nothing is
 de-duplicated here. The Valuer General re-issues ("restates") a sale in later
@@ -8,14 +8,15 @@ history, criterion C2).
 
 Every row carries lineage columns (criterion C4):
 
-    source_archive   zip the row came from, e.g. ``2024.zip``
+    source_archive   weekly zip the row came from, e.g. ``20240108.zip``
     source_file      inner path down to the .DAT file
     source_line      1-based line number of the B record in that file
     record_hash      md5 of the raw B line -- identical restatements share it
 
-Incremental and idempotent (criterion C5): an archive is processed once;
+Incremental and idempotent (criterion C5): each weekly zip is processed once;
 ``_manifest.csv`` records its sha256, row counts and trailer checks, and a
-rerun skips archives whose hash is already there.
+rerun skips weeks whose hash is already there. Any yearly bundle found in the
+raw directory is first split into its weekly zips (see ``download.unbundle``).
 
 Usage:
     python -m sources.property_sales.bronze.extract [--raw-dir ...]
@@ -34,6 +35,7 @@ import zipfile
 
 from ..psi_format import (B_FIELD_COUNT, B_FIELDS, C_DISTRICT, C_PROPERTY_ID,
                          C_SALE_COUNTER, C_TEXT, region_codes)
+from .download import WEEKLY_NAME, unbundle
 
 DEFAULT_RAW_DIR = os.path.join("data", "bronze", "property_sales", "raw")
 DEFAULT_LANDING_DIR = os.path.join("data", "bronze", "property_sales", "landing")
@@ -192,9 +194,11 @@ def main(argv=None) -> int:  # pylint: disable=too-many-locals
     manifest_path = os.path.join(args.landing_dir, "_manifest.csv")
     manifest = read_manifest(manifest_path)
 
-    zips = sorted(glob.glob(os.path.join(args.raw_dir, "*.zip")))
+    unbundle(args.raw_dir)
+    zips = sorted(path for path in glob.glob(os.path.join(args.raw_dir, "*.zip"))
+                  if WEEKLY_NAME.match(os.path.basename(path)))
     if not zips:
-        print(f"no zips in {args.raw_dir} -- run download first",
+        print(f"no weekly zips in {args.raw_dir} -- run download first",
               file=sys.stderr)
         return 1
     for path in zips:
