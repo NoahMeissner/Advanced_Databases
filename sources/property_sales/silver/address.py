@@ -14,7 +14,7 @@ Two routes lead from a PSI sale to a location:
 
 import re
 
-from .psi_format import STREET_SUFFIXES, STREET_TYPES
+from ..psi_format import STREET_SUFFIXES, STREET_TYPES
 
 _NUMBER = re.compile(r"^(\d+)\s*([A-Z]{0,2})$")
 _LOT_PLAN = re.compile(r"([0-9A-Z]+)/(?:([0-9A-Z]+)/)?(SP)?(\d+)\b")

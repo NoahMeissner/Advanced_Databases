@@ -8,30 +8,34 @@ zips to a Data Vault in PostgreSQL. It is scoped to **Greater Sydney** and
 Only the Python standard library is used.
 
 ```
-raw zips ──extract──▶ landing (1 CSV per zip, every B record, lineage)
-         ──transform─▶ staging  sale_versions + sales_current (versioned, typed, flagged)
-         ──psi_load.sql─▶ Postgres raw vault  hubs / link / satellites + views
+Bronze  raw zips ──extract──▶ landing (1 CSV per zip, every B record, lineage)
+                                data/bronze/property_sales/{raw,landing}/
+Silver  landing ──transform──▶ sale_versions + sales_current (versioned, typed, flagged)
+        sales_current ──street_prices──▶ street_prices (average price per street)
+                                data/silver/property_sales/
+        sale_versions ──psi_load.sql──▶ Postgres raw vault: hubs / link / satellites + views
 ```
 
 ## Run it
 
 ```bash
 # from the repo root
-python -m ingestion.property_sales.download      # tries each zip; writes manual_download.html for the rest
-python -m ingestion.property_sales.extract       # --region greater_sydney (default) | gsc33 | nsw
-python -m ingestion.property_sales.transform
-python -m ingestion.property_sales.psi_profile --out data/property_sales/profile.md
-python -m ingestion.property_sales.dashboard    # -> data/property_sales/dashboard.html
+python -m sources.property_sales.bronze.download      # tries each zip; writes manual_download.html for the rest
+python -m sources.property_sales.bronze.extract       # --region greater_sydney (default) | gsc33 | nsw
+python -m sources.property_sales.silver.transform
+python -m sources.property_sales.silver.street_prices
+python -m sources.property_sales.quality.psi_profile --out data/reports/property_sales/profile.md
+python -m sources.property_sales.quality.dashboard    # -> data/reports/property_sales/dashboard.html
 
-psql -d suburblens -f ingestion/property_sales/sql/psi_schema.sql
-psql -d suburblens -f ingestion/property_sales/sql/psi_load.sql
+psql -d suburblens -f sources/property_sales/sql/psi_schema.sql
+psql -d suburblens -f sources/property_sales/sql/psi_load.sql
 ```
 
 All data goes under `data/`, which is git-ignored. **Downloads are blocked for
 scripts.** Since mid-2026 the Valuer General site uses Cloudflare bot
 protection, so `download` gets HTTP 403. Open the generated
-`data/property_sales/raw/manual_download.html` in a browser, click through the
-links, save the zips into `data/property_sales/raw/`, and run `extract`.
+`data/bronze/property_sales/raw/manual_download.html` in a browser, click through the
+links, save the zips into `data/bronze/property_sales/raw/`, and run `extract`.
 
 Runtime on a laptop for all 2021–2026 archives (76 MB of zips): extract takes about 30 s,
 transform about 2 min, and the Postgres load about 2 min.
@@ -41,9 +45,40 @@ medians, a deck.gl 3D map of localities, district medians and growth, publicatio
 as-of cohort curves (what was known about a contract quarter N weeks later), and
 restatements by publication file. Only aggregates are inlined, never individual
 sales. Localities are placed at their NSW POI gazetteer point, cached in
-`data/property_sales/places.json` on first run, or at their postcode centroid when
+`data/reports/property_sales/places.json` on first run, or at their postcode centroid when
 the gazetteer has no match. Open the page in a browser; the map needs the CDN scripts
 (serve with `python -m http.server` if your browser blocks them on `file://`).
+
+## Silver: average price per street (`street_prices`)
+
+`data/silver/property_sales/street_prices.csv.gz` has one row per **street ×
+property type × period**. On archives to 2026-09-28 it covers 649,604 standard
+sales on 46,328 streets (502,961 rows).
+
+| Column | Meaning |
+|---|---|
+| `street_id` | `street_name_core\|street_type_code\|street_suffix_code\|locality\|postcode`. This is the G-NAF `STREET_LOCALITY` grain: the same name in two suburbs is two streets, and `RD` and `ROAD` are one |
+| `street_label` | e.g. `BONDI ROAD, BONDI NSW 2026` |
+| `district_code`, `district_name` | PSI district (≈ LGA) with the most sales on the street |
+| `property_type` | `house` (non-strata residence), `unit` (strata residence), `land` (vacant), `other` (commercial, industrial, car space, …), or `all` |
+| `period` | Contract year, or `all` |
+| `sales` | Standard sales behind the figures (one parcel, whole interest, price ≥ $1k) |
+| `mean_price`, `median_price`, `min_price`, `max_price` | AUD |
+| `first_contract_date`, `last_contract_date` | Range of contract dates behind the row |
+| `as_of` | Latest publication date in the input: what we knew when the table was built |
+
+Read it with care:
+
+- **Mean vs median.** Prices are skewed, and one commercial or trophy sale drags
+  the mean. For example, Christie Street, St Leonards (2025, `all`) has a mean of
+  $2.66M and a median of $1.35M. Use `median_price` and a specific
+  `property_type` for "typical price".
+- **Small samples.** The median street has 6 standard sales across all years,
+  and only 15,855 streets have 10 or more. Filter on `sales` before comparing
+  streets.
+- **Recent years are incomplete** (see Known data gaps), so compare a street's
+  `2026` row with other streets' `2026` rows, not with its own `2025`.
+- 1,348 standard sales have no street name or locality and aren't counted.
 
 ## The source
 
@@ -182,7 +217,7 @@ from archives up to 2026-09-28 (685,187 current parcel-sales).
 
 | Criterion | Where it is handled |
 |---|---|
-| C1 query performance | `sales_current` is pre-flattened; indexes on contract date, address match columns, and lotidstring |
+| C1 query performance | `sales_current` is pre-flattened and `street_prices` pre-aggregated; indexes on contract date, address match columns, and lotidstring |
 | C2 bitemporal history | `sat_parcel_sale`: `load_dts` = transaction time, contract/settlement = valid time; `sale_as_of(ts)` rebuilds what we knew at any date |
 | C3 standardisation | ISO dates, area always in m², G-NAF street type codes, DCDB lotidstring |
 | C4 lineage and quality | `record_source` = `archive/file:line`, a sha256 per archive in `_manifest.csv`, Z-trailer checks, and flags (never deletes) |
@@ -192,13 +227,14 @@ from archives up to 2026-09-28 (685,187 current parcel-sales).
 
 | File | Purpose |
 |---|---|
-| `psi_format.py` | B/C record layout, street-type map, region filter |
-| `download.py` | URL list, download attempt, manual-download page |
-| `extract.py` | zips → landing CSV (lineage, trailer check, C join) |
-| `transform.py` | landing → `sale_versions`, `sales_current` |
-| `address.py` | G-NAF address split, lot/plan parser |
-| `psi_profile.py` | the stats above |
-| `dashboard.py`, `dashboard_template.html` | aggregates → self-contained HTML dashboard + 3D map |
+| `psi_format.py` | B/C record layout, street-type map, region filter (shared by all layers) |
+| `bronze/download.py` | URL list, download attempt, manual-download page |
+| `bronze/extract.py` | zips → landing CSV (lineage, trailer check, C join) |
+| `silver/transform.py` | landing → `sale_versions`, `sales_current` |
+| `silver/address.py` | G-NAF address split, lot/plan parser |
+| `silver/street_prices.py` | `sales_current` → average / median price per street, type and year |
+| `quality/psi_profile.py` | the stats above |
+| `quality/dashboard.py`, `quality/dashboard_template.html` | aggregates → self-contained HTML dashboard + 3D map |
 | `reference/psi_districts.csv` | 130 PSI districts → LGA + Greater Sydney flags |
 | `sql/psi_schema.sql`, `sql/psi_load.sql` | Postgres raw vault + views, idempotent load |
 

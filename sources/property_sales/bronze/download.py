@@ -12,8 +12,8 @@ a page of links to click through in a browser. Save the zips into the raw
 directory and carry on with ``extract``.
 
 Usage:
-    python -m ingestion.property_sales.download [--from-year 2021]
-        [--raw-dir data/property_sales/raw] [--list-only]
+    python -m sources.property_sales.bronze.download [--from-year 2021]
+        [--raw-dir data/bronze/property_sales/raw] [--list-only]
 """
 
 import argparse
@@ -23,9 +23,9 @@ import sys
 import urllib.error
 import urllib.request
 
-from .psi_format import URL_BASE
+from ..psi_format import URL_BASE
 
-DEFAULT_RAW_DIR = os.path.join("data", "property_sales", "raw")
+DEFAULT_RAW_DIR = os.path.join("data", "bronze", "property_sales", "raw")
 USER_AGENT = "Mozilla/5.0 (UTS 32113 Advanced Databases coursework)"
 
 

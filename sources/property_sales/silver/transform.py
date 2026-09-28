@@ -16,7 +16,7 @@ are hashed (``hashdiff``, as in a Data Vault satellite); a new hash is a new
     valid time        contract_date / settlement_date  -- when it happened
     transaction time  load_from .. load_to              -- when we knew it
 
-Outputs (gzip CSV in ``--staging-dir``):
+Outputs (gzip CSV in ``--silver-dir``):
 
     sale_versions   every version, with load_from/load_to, version_no,
                     changed_fields and lineage of the row that introduced it
@@ -26,8 +26,8 @@ Outputs (gzip CSV in ``--staging-dir``):
 Quality problems are **flagged, never deleted** (criterion C4).
 
 Usage:
-    python -m ingestion.property_sales.transform [--landing-dir ...]
-        [--staging-dir ...]
+    python -m sources.property_sales.silver.transform [--landing-dir ...]
+        [--silver-dir ...]
 """
 
 import argparse
@@ -40,10 +40,10 @@ import os
 import sys
 
 from .address import address_label, parse_lot_plan, split_address
-from .psi_format import AREA_UNITS_TO_M2, NATURE_OF_PROPERTY, load_districts
+from ..psi_format import AREA_UNITS_TO_M2, NATURE_OF_PROPERTY, load_districts
 
-DEFAULT_LANDING_DIR = os.path.join("data", "property_sales", "landing")
-DEFAULT_STAGING_DIR = os.path.join("data", "property_sales", "staging")
+DEFAULT_LANDING_DIR = os.path.join("data", "bronze", "property_sales", "landing")
+DEFAULT_SILVER_DIR = os.path.join("data", "silver", "property_sales")
 
 # Descriptive fields whose change makes a new version. sale_counter and
 # download_datetime are excluded: they change on every republication.
@@ -329,12 +329,12 @@ def main(argv=None) -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", maxsplit=1)[0])
     parser.add_argument("--landing-dir", default=DEFAULT_LANDING_DIR)
-    parser.add_argument("--staging-dir", default=DEFAULT_STAGING_DIR)
+    parser.add_argument("--silver-dir", default=DEFAULT_SILVER_DIR)
     args = parser.parse_args(argv)
 
-    os.makedirs(args.staging_dir, exist_ok=True)
-    versions_path = os.path.join(args.staging_dir, "sale_versions.csv.gz")
-    current_path = os.path.join(args.staging_dir, "sales_current.csv.gz")
+    os.makedirs(args.silver_dir, exist_ok=True)
+    versions_path = os.path.join(args.silver_dir, "sale_versions.csv.gz")
+    current_path = os.path.join(args.silver_dir, "sales_current.csv.gz")
 
     with gzip.open(versions_path + ".part", "wt", newline="",
                    encoding="utf-8") as handle:

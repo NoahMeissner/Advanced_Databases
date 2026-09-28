@@ -1,7 +1,7 @@
 """Data-quality and coverage profile of the staging tables, as Markdown.
 
 Usage:
-    python -m ingestion.property_sales.psi_profile [--staging-dir ...]
+    python -m sources.property_sales.quality.psi_profile [--silver-dir ...]
         [--out profile.md]
 """
 
@@ -14,7 +14,7 @@ import statistics
 import sys
 from collections import Counter, defaultdict
 
-DEFAULT_STAGING_DIR = os.path.join("data", "property_sales", "staging")
+DEFAULT_SILVER_DIR = os.path.join("data", "silver", "property_sales")
 OLD_YEAR = "2020"  # contract years before this are bucketed together
 
 
@@ -150,13 +150,13 @@ def profile_versions(path: str) -> list:
 def main(argv=None) -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description=__doc__.split("\n", maxsplit=1)[0])
-    parser.add_argument("--staging-dir", default=DEFAULT_STAGING_DIR)
+    parser.add_argument("--silver-dir", default=DEFAULT_SILVER_DIR)
     parser.add_argument("--out", default="")
     args = parser.parse_args(argv)
     lines = ["# PSI profile", ""]
-    lines += profile_current(os.path.join(args.staging_dir,
+    lines += profile_current(os.path.join(args.silver_dir,
                                           "sales_current.csv.gz"))
-    lines += [""] + profile_versions(os.path.join(args.staging_dir,
+    lines += [""] + profile_versions(os.path.join(args.silver_dir,
                                                   "sale_versions.csv.gz"))
     text = "\n".join(lines) + "\n"
     if args.out:

@@ -15,9 +15,9 @@ localities sharing its postcode (duplicate names such as Silverwater), is put
 at its postcode centroid instead and marked approximate.
 
 Usage:
-    python -m ingestion.property_sales.dashboard [--staging-dir ...]
-        [--landing-dir ...] [--places data/property_sales/places.json]
-        [--out data/property_sales/dashboard.html]
+    python -m sources.property_sales.quality.dashboard [--silver-dir ...]
+        [--landing-dir ...] [--places data/reports/property_sales/places.json]
+        [--out data/reports/property_sales/dashboard.html]
 """
 
 import argparse
@@ -35,10 +35,10 @@ from collections import Counter, defaultdict
 
 from .psi_profile import days, read
 
-DEFAULT_STAGING_DIR = os.path.join("data", "property_sales", "staging")
-DEFAULT_LANDING_DIR = os.path.join("data", "property_sales", "landing")
-DEFAULT_PLACES = os.path.join("data", "property_sales", "places.json")
-DEFAULT_OUT = os.path.join("data", "property_sales", "dashboard.html")
+DEFAULT_SILVER_DIR = os.path.join("data", "silver", "property_sales")
+DEFAULT_LANDING_DIR = os.path.join("data", "bronze", "property_sales", "landing")
+DEFAULT_PLACES = os.path.join("data", "reports", "property_sales", "places.json")
+DEFAULT_OUT = os.path.join("data", "reports", "property_sales", "dashboard.html")
 TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "dashboard_template.html")
 
@@ -436,16 +436,16 @@ def main(argv=None) -> int:
     """CLI entry point."""
     parser = argparse.ArgumentParser(
         description=__doc__.split("\n", maxsplit=1)[0])
-    parser.add_argument("--staging-dir", default=DEFAULT_STAGING_DIR)
+    parser.add_argument("--silver-dir", default=DEFAULT_SILVER_DIR)
     parser.add_argument("--landing-dir", default=DEFAULT_LANDING_DIR)
     parser.add_argument("--places", default=DEFAULT_PLACES)
     parser.add_argument("--out", default=DEFAULT_OUT)
     args = parser.parse_args(argv)
 
     first_pub, restate = scan_versions(
-        os.path.join(args.staging_dir, "sale_versions.csv.gz"))
+        os.path.join(args.silver_dir, "sale_versions.csv.gz"))
     col = Collector(first_pub)
-    for row in read(os.path.join(args.staging_dir, "sales_current.csv.gz")):
+    for row in read(os.path.join(args.silver_dir, "sales_current.csv.gz")):
         col.add(row)
     places = place_localities(fetch_places(args.places), col.postcodes())
     data = build(col, restate, read_manifest(args.landing_dir), places)

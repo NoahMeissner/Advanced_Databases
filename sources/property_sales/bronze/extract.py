@@ -18,7 +18,7 @@ Incremental and idempotent (criterion C5): an archive is processed once;
 rerun skips archives whose hash is already there.
 
 Usage:
-    python -m ingestion.property_sales.extract [--raw-dir ...]
+    python -m sources.property_sales.bronze.extract [--raw-dir ...]
         [--landing-dir ...] [--region greater_sydney|gsc33|nsw]
 """
 
@@ -32,11 +32,11 @@ import os
 import sys
 import zipfile
 
-from .psi_format import (B_FIELD_COUNT, B_FIELDS, C_DISTRICT, C_PROPERTY_ID,
+from ..psi_format import (B_FIELD_COUNT, B_FIELDS, C_DISTRICT, C_PROPERTY_ID,
                          C_SALE_COUNTER, C_TEXT, region_codes)
 
-DEFAULT_RAW_DIR = os.path.join("data", "property_sales", "raw")
-DEFAULT_LANDING_DIR = os.path.join("data", "property_sales", "landing")
+DEFAULT_RAW_DIR = os.path.join("data", "bronze", "property_sales", "raw")
+DEFAULT_LANDING_DIR = os.path.join("data", "bronze", "property_sales", "landing")
 
 LINEAGE_COLUMNS = ["source_archive", "source_file", "source_line",
                    "record_hash"]

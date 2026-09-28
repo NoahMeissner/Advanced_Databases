@@ -2,8 +2,8 @@
 --
 -- Run from the repository root after transform.py:
 --
---   psql -d suburblens -f ingestion/property_sales/sql/psi_schema.sql
---   psql -d suburblens -f ingestion/property_sales/sql/psi_load.sql
+--   psql -d suburblens -f sources/property_sales/sql/psi_schema.sql
+--   psql -d suburblens -f sources/property_sales/sql/psi_load.sql
 --
 -- psql's \copy reads client-side files, so no server file access is needed.
 
@@ -12,7 +12,7 @@ SET search_path = psi;
 -- Reference
 CREATE TEMP TABLE tmp_district (district_code text, district_name text,
                                 in_gccsa int, in_gsc33 int);
-\copy tmp_district FROM 'ingestion/property_sales/reference/psi_districts.csv' WITH (FORMAT csv, HEADER true)
+\copy tmp_district FROM 'sources/property_sales/reference/psi_districts.csv' WITH (FORMAT csv, HEADER true)
 INSERT INTO ref_psi_district
 SELECT district_code, district_name, in_gccsa = 1, in_gsc33 = 1
 FROM tmp_district
@@ -22,7 +22,7 @@ ON CONFLICT (district_code) DO UPDATE
 
 -- Staging: full reload of the version file
 TRUNCATE stg_psi_sale_version;
-\copy stg_psi_sale_version FROM PROGRAM 'gzip -dc data/property_sales/staging/sale_versions.csv.gz' WITH (FORMAT csv, HEADER true)
+\copy stg_psi_sale_version FROM PROGRAM 'gzip -dc data/silver/property_sales/sale_versions.csv.gz' WITH (FORMAT csv, HEADER true)
 
 -- Hubs: first time each business key was seen
 INSERT INTO hub_property (property_hk, property_id, load_dts, record_source)
