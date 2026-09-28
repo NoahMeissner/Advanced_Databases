@@ -8,7 +8,7 @@ zips to a Data Vault in PostgreSQL. It is scoped to **Greater Sydney** and
 Only the Python standard library is used.
 
 ```
-Bronze  raw zips ──extract──▶ landing (1 CSV per zip, every B record, lineage)
+Bronze  weekly zips ──extract──▶ landing (1 CSV per week, every B record, lineage)
                                 data/bronze/property_sales/{raw,landing}/
 Silver  landing ──transform──▶ sale_versions + sales_current (versioned, typed, flagged)
         sales_current ──street_prices──▶ street_prices (average price per street)
@@ -37,7 +37,18 @@ protection, so `download` gets HTTP 403. Open the generated
 `data/bronze/property_sales/raw/manual_download.html` in a browser, click through the
 links, save the zips into `data/bronze/property_sales/raw/`, and run `extract`.
 
-Runtime on a laptop for all 2021–2026 archives (76 MB of zips): extract takes about 30 s,
+**The raw store is one zip per week** (`raw/YYYYMMDD.zip`, 300 files from
+2021-01-04 to 2026-09-28, 77 MB), byte-for-byte what the Valuer General
+published each Monday. Past years are only offered as yearly bundles, so
+`download` and `extract` split any `YYYY.zip` they find into its weekly zips.
+Each bundle's sha256 and members are logged in `raw/_bundles.csv`, and the
+bundle is then removed. Re-saving a bundle that's already been split is a
+no-op. If a weekly file already exists with different content, the split
+stops instead of overwriting raw data. A new week is just one more file: drop
+it in and re-run `extract`, which only processes weeks it hasn't seen (by
+sha256).
+
+Runtime on a laptop for all 300 weeks: extract takes about 20 s,
 transform about 2 min, and the Postgres load about 2 min.
 
 `dashboard` (about 25 s) writes one self-contained HTML page. It includes monthly
@@ -85,8 +96,8 @@ Read it with care:
 | | |
 |---|---|
 | Publisher | Valuer General NSW (Valuation NSW), from Notices of Sale lodged with NSW Land Registry Services |
-| Access | `https://www.valuergeneral.nsw.gov.au/__psi/yearly/YYYY.zip` (past years), `.../weekly/YYYYMMDD.zip` (each Monday, current year) |
-| Format | Nested zips of `;`-delimited `.DAT` files, one per district per week, no headers. Spec: *Current Property Sales Data File Format 2001 to Current* |
+| Access | `https://www.valuergeneral.nsw.gov.au/__psi/yearly/YYYY.zip` (past years, a bundle of that year's weekly zips), `.../weekly/YYYYMMDD.zip` (each Monday, current year) |
+| Format | Weekly zips of `;`-delimited `.DAT` files, one per district per week, no headers. Spec: *Current Property Sales Data File Format 2001 to Current* |
 | Licence | `creative_commons.txt` inside every zip is **CC BY**; the nsw.gov.au web page says CC BY-NC-ND. We attribute, don't redistribute the data, and keep raw data out of git |
 | Grain | One B record per parcel per sale. There is no lat/lon, so location comes from the address or from lot/plan |
 | Freshness | Weekly. First published a median **7 days after settlement** (**52 days after contract**; 90th pct 193, due to off-the-plan sales) |
@@ -163,9 +174,9 @@ contracts from 2020 or earlier that settled later are included (26,596 from
    340 remain blank and are left out of the vault hubs. 221 of them are from
    the four newest weekly files, so the count is mostly recent sales still
    waiting for an id and drops as later files fill it in.
-5. **A stray CR inside a record** (e.g. `2023.zip/20230313.zip/210_…DAT`)
+5. **A stray CR inside a record** (e.g. `20230313.zip`, file `210_…DAT`)
    breaks `str.splitlines()` and throws off the Z trailer count. → Lines are split on LF only.
-   All 36,794 weekly district files in the 44 archives now pass the trailer
+   All 36,794 district files in the 300 weekly zips now pass the trailer
    check (`_manifest.csv`: 0 mismatches, 0 malformed lines).
 6. **Multi-parcel sales repeat the full price on every parcel.** Use
    `is_standard_sale` or `parcels_in_sale = 1` before computing medians.
@@ -220,16 +231,16 @@ from archives up to 2026-09-28 (685,187 current parcel-sales).
 | C1 query performance | `sales_current` is pre-flattened and `street_prices` pre-aggregated; indexes on contract date, address match columns, and lotidstring |
 | C2 bitemporal history | `sat_parcel_sale`: `load_dts` = transaction time, contract/settlement = valid time; `sale_as_of(ts)` rebuilds what we knew at any date |
 | C3 standardisation | ISO dates, area always in m², G-NAF street type codes, DCDB lotidstring |
-| C4 lineage and quality | `record_source` = `archive/file:line`, a sha256 per archive in `_manifest.csv`, Z-trailer checks, and flags (never deletes) |
-| C5 safe incremental loading | Landing is one file per zip, and archives already loaded are skipped by sha256. Vault inserts use `ON CONFLICT DO NOTHING`, so reruns change nothing |
+| C4 lineage and quality | `record_source` = `weekly zip/file:line`, a sha256 per week in `_manifest.csv` (and per yearly bundle in `raw/_bundles.csv`), Z-trailer checks, and flags (never deletes) |
+| C5 safe incremental loading | Raw and landing are one file per week, and weeks already loaded are skipped by sha256. Vault inserts use `ON CONFLICT DO NOTHING`, so reruns change nothing |
 
 ## Files
 
 | File | Purpose |
 |---|---|
 | `psi_format.py` | B/C record layout, street-type map, region filter (shared by all layers) |
-| `bronze/download.py` | URL list, download attempt, manual-download page |
-| `bronze/extract.py` | zips → landing CSV (lineage, trailer check, C join) |
+| `bronze/download.py` | Which weeks are missing, download attempt, yearly-bundle split, manual-download page |
+| `bronze/extract.py` | weekly zips → landing CSV (lineage, trailer check, C join) |
 | `silver/transform.py` | landing → `sale_versions`, `sales_current` |
 | `silver/address.py` | G-NAF address split, lot/plan parser |
 | `silver/street_prices.py` | `sales_current` → average / median price per street, type and year |
