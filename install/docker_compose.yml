@@ -1,0 +1,85 @@
+# Suburblens – every Database in one File.
+# Start with ./start.sh (or: docker compose up -d --build --wait)
+#
+#   Postgres 17 + PostGIS + H3   localhost:5432   user/pw/db: suburblens
+#   Neo4j 5 + APOC + GDS         http://localhost:7474, bolt://localhost:7687   user neo4j / pw suburblens
+#   Adminer (SQL im Browser)     http://localhost:8080
+#   Metabase (Dashboards)        http://localhost:3000
+#
+# Passwords can be overwritten with .env-File.
+
+name: suburblens
+
+services:
+  postgres:
+    build:
+      dockerfile_inline: |
+        FROM postgres:17-bookworm
+        RUN apt-get update \
+         && apt-get install -y --no-install-recommends \
+              postgresql-17-postgis-3 postgresql-17-postgis-3-scripts postgresql-17-h3 \
+         && rm -rf /var/lib/apt/lists/*
+    image: suburblens/postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: suburblens
+      POSTGRES_USER: suburblens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suburblens}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./data:/data:ro          
+    shm_size: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U suburblens -d suburblens"]
+      interval: 5s
+      retries: 20
+
+  neo4j:
+    image: neo4j:5-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-suburblens}
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,gds.*
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 1G
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - neo4jdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' >/dev/null 2>&1"]
+      interval: 10s
+      retries: 30
+      start_period: 60s   
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  metabase:
+    image: metabase/metabase:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - metabasedata:/metabase-data
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  neo4jdata:
+  metabasedata:
