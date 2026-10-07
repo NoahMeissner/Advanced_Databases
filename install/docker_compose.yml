@@ -1,12 +1,15 @@
 # Suburblens – every Database in one File.
 # Start with ./start.sh (or: docker compose up -d --build --wait)
 #
-#   Postgres 17 + PostGIS + H3   localhost:5432   user/pw/db: suburblens
-#   Neo4j 5 + APOC + GDS         http://localhost:7474, bolt://localhost:7687   user neo4j / pw suburblens
-#   Adminer (SQL im Browser)     http://localhost:8080
+#   Postgres 17 + PostGIS + H3   localhost:5432
+#   Neo4j 5 + APOC + GDS         http://localhost:7474, bolt://localhost:7687
+#   Adminer (SQL in the browser) http://localhost:8080
 #   Metabase (Dashboards)        http://localhost:3000
 #
-# Passwords can be overwritten with .env-File.
+# Users and passwords come from the .env in the repo root (template:
+# .env.example). Without a .env nothing starts - that is on purpose, so no
+# default password is ever in use. On the first run ./start.sh creates a .env
+# with random passwords.
 
 name: suburblens
 
@@ -22,17 +25,17 @@ services:
     image: suburblens/postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_DB: suburblens
-      POSTGRES_USER: suburblens
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suburblens}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is missing - create a .env (see .env.example)}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is missing - create a .env (see .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is missing - create a .env (see .env.example)}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./data:/data:ro          
     shm_size: 1g
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U suburblens -d suburblens"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       retries: 20
 
@@ -40,18 +43,18 @@ services:
     image: neo4j:5-community
     restart: unless-stopped
     environment:
-      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-suburblens}
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is missing - create a .env (see .env.example)}
       NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
       NEO4J_dbms_security_procedures_unrestricted: apoc.*,gds.*
       NEO4J_server_memory_heap_max__size: 1G
       NEO4J_server_memory_pagecache_size: 1G
     ports:
       - "127.0.0.1:7474:7474"
-      - "127.0.0.1:7687:7687"
+      - "127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
       - neo4jdata:/data
     healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "cypher-shell -u \"$${NEO4J_AUTH%%/*}\" -p \"$${NEO4J_AUTH#*/}\" 'RETURN 1' >/dev/null 2>&1"]
       interval: 10s
       retries: 30
       start_period: 60s   
@@ -61,7 +64,7 @@ services:
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${ADMINER_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,7 +73,7 @@ services:
     image: metabase/metabase:latest
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${METABASE_PORT:-3000}:3000"
     volumes:
       - metabasedata:/metabase-data
     environment:
