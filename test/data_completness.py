@@ -1,18 +1,18 @@
 # Noah Meissner 6.10.2026
 """Test: Bronze layer: Rows in the raw file == rows in the table.
 
-Bronze is an unaltered copy of the source – no filtering or aggregation occurs. 
+Bronze is an unaltered copy of the source – no filtering or aggregation occurs.
 Therefore, the rule is: rows in the file == rows in the table.
 
-Rows are counted per source, not per table: every row contains its originating 
-file path in the `_source_file` column (see pipeline/bronze/load.py). This prevents 
+Rows are counted per source, not per table: every row contains its originating
+file path in the `_source_file` column (see pipeline/bronze/load.py). This prevents
 conflicts when multiple files are loaded into the same table.
 
-The file is read using the exact same reader utilized by the loader (CSV: one 
-line = one row, GeoJSON: one feature = one row). Thus, the test verifies the 
+The file is read using the exact same reader utilized by the loader (CSV: one
+line = one row, GeoJSON: one feature = one row). Thus, the test verifies the
 loader itself rather than introducing a separate counting logic.
 
-Prerequisites: the databases must be running (./start.sh) and the pipeline 
+Prerequisites: the databases must be running (./start.sh) and the pipeline
 must have already completed (python -m pipeline.run).
 
 Run from the repository root:

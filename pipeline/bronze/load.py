@@ -3,7 +3,7 @@
 
 Supported are CSV (one row = one row) and GeoJSON (one row = one Feature).
 
-FFor each source:
+For each source:
   1. Read file – everything as text, nothing is converted
   2. SQL-File calling (creates table if not exists)
   3. old rows of the file delete and new ones upload via COPY (one transaction)
@@ -68,6 +68,7 @@ def load_geojson_data(file_path: Path) -> pd.DataFrame:
 
     return pd.DataFrame(rows).fillna("")
 
+
 def to_snake_case(name: str) -> str:
     """PlanningPortalApplicationNumber -> planning_portal_application_number,
     AccompaniedByVPAFlag -> accompanied_by_vpa_flag. Already-lowercase names stay as they are."""
@@ -83,6 +84,7 @@ def _as_text(value) -> str:
     if isinstance(value, (list, dict, bool)):
         return json.dumps(value, separators=(",", ":"), ensure_ascii=False)
     return str(value)
+
 
 SOURCES = {
     "traffic_volume": Source("traffic_volume.sql", "traffic_segment_hourly",
