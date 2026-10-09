@@ -25,6 +25,18 @@ CREATE TABLE IF NOT EXISTS silver.bus_stop_profile (
     hex_id       text,
     route_count  integer     NOT NULL,
 
+    -- which LGA the stop sits in, inferred from the DA points (63_bus_stop_lga)
+    lga_code                        text,
+    lga_name                        text,
+    lga_assignment_method           text,
+    flag_lga_low_confidence         boolean,
+
+    -- rent for that LGA, latest usable quarter. Only 6 of 33 LGAs have rent
+    -- data at all, so this is NULL for roughly 4 stops in 5 - see has_rent_data.
+    rent_median_weekly_house        numeric(10,2),
+    rent_median_weekly_flat         numeric(10,2),
+    rent_period                     date,
+
     -- development applications (k-ring 1, all periods)
     da_n_applications_kring1        integer,
     da_n_modifications_kring1       integer,
@@ -61,6 +73,8 @@ CREATE TABLE IF NOT EXISTS silver.bus_stop_profile (
     n_edges_zero_timepoint          integer     NOT NULL DEFAULT 0,
 
     -- coverage: is a NULL above "nothing there" or "no data loaded"?
+    has_lga_data      boolean NOT NULL DEFAULT false,
+    has_rent_data     boolean NOT NULL DEFAULT false,
     has_da_data       boolean NOT NULL DEFAULT false,
     has_sales_data    boolean NOT NULL DEFAULT false,
     has_school_data   boolean NOT NULL DEFAULT false,
@@ -77,6 +91,8 @@ DELETE FROM silver.bus_stop_profile;
 
 INSERT INTO silver.bus_stop_profile
     (stop_id, stop_name, geom, geom_m, hex_id, route_count,
+     lga_code, lga_name, lga_assignment_method, flag_lga_low_confidence,
+     rent_median_weekly_house, rent_median_weekly_flat, rent_period,
      da_n_applications_kring1, da_n_modifications_kring1, da_sum_new_dwellings_kring1,
      da_median_cost_kring1, da_n_applications_hex,
      sales_n_kring1, sales_median_price_kring1, sales_median_price_per_m2_kring1,
@@ -87,6 +103,7 @@ INSERT INTO silver.bus_stop_profile
      avg_edge_travel_time_peak_s, avg_edge_travel_time_offpeak_s,
      avg_edge_travel_time_morning_s, avg_edge_travel_time_afternoon_s,
      avg_edge_travel_time_evening_s, n_edges, n_edges_zero_timepoint,
+     has_lga_data, has_rent_data,
      has_da_data, has_sales_data, has_school_data, has_traffic_data, has_transit_data)
 WITH transit AS (
     -- every edge touching the stop, in either direction
@@ -103,6 +120,14 @@ WITH transit AS (
             SELECT edge_key, to_stop_id   AS stop_id FROM silver.bus_edge) i
       JOIN silver.bus_edge_travel_time t USING (edge_key)
      GROUP BY i.stop_id
+), rent AS (
+    -- the latest usable quarter, pivoted to one row per LGA
+    SELECT lga_code,
+           max(median_weekly_rent) FILTER (WHERE dwelling_type = 'house') AS house,
+           max(median_weekly_rent) FILTER (WHERE dwelling_type = 'flat')  AS flat,
+           max(period_start)                                              AS period
+      FROM silver.rent_lga_latest
+     GROUP BY lga_code
 ), traffic AS (
     SELECT stop_id,
            max(avg_vehicles_per_hour) FILTER (WHERE daypart = 'rush')     AS vph_rush,
@@ -115,6 +140,8 @@ WITH transit AS (
      GROUP BY stop_id
 )
 SELECT s.stop_id, s.stop_name, s.geom, s.geom_m, s.hex_id, s.route_count,
+       sl.lga_code, l.lga_name, sl.assignment_method, sl.flag_low_confidence,
+       rt.house, rt.flat, rt.period,
        da.n_applications_kring1, da.n_modifications_kring1, da.sum_new_dwellings_kring1,
        da.median_cost_kring1, da.n_applications_hex,
        ps.n_sales_kring1, ps.median_price_kring1, ps.median_price_per_m2_kring1,
@@ -124,6 +151,8 @@ SELECT s.stop_id, s.stop_name, s.geom, s.geom_m, s.hex_id, s.route_count,
        tr.vph_rush, tr.vph_non_rush, tr.vph_night, tr.nearest_m, tr.n_segments,
        tt.peak_s, tt.offpeak_s, tt.morning_s, tt.afternoon_s, tt.evening_s,
        coalesce(tt.n_edges, 0), coalesce(tt.n_zero, 0),
+       sl.stop_id IS NOT NULL,
+       rt.lga_code IS NOT NULL AND (rt.house IS NOT NULL OR rt.flat IS NOT NULL),
        da.stop_id IS NOT NULL,
        ps.stop_id IS NOT NULL,
        sc.stop_id IS NOT NULL,
@@ -134,6 +163,9 @@ SELECT s.stop_id, s.stop_name, s.geom, s.geom_m, s.hex_id, s.route_count,
          ON da.stop_id = s.stop_id AND da.period = 'all'
   LEFT JOIN silver.bus_stop_property_sales ps
          ON ps.stop_id = s.stop_id AND ps.period = 'all' AND ps.property_type = 'all'
+  LEFT JOIN silver.bus_stop_lga sl            ON sl.stop_id = s.stop_id
+  LEFT JOIN silver.lga l                      ON l.lga_code = sl.lga_code
+  LEFT JOIN rent rt                           ON rt.lga_code = sl.lga_code
   LEFT JOIN silver.bus_stop_school_summary sc ON sc.stop_id = s.stop_id
   LEFT JOIN traffic tr                        ON tr.stop_id = s.stop_id
   LEFT JOIN transit tt                        ON tt.stop_id = s.stop_id;

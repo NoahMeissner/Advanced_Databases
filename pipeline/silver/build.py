@@ -9,12 +9,7 @@ layer anyone may trust, so each step here does three things:
   3. reduce the source to a per-bus-stop measure, because the bus stops are the
      reference points all sources are joined on
 
-Every step is one SQL file in pipeline/silver/sql, run in its own transaction
-and in the order of STEPS - later steps read earlier ones, so the order is the
-dependency graph.
-
-Re-running is safe: entity tables upsert with ON CONFLICT, derived aggregates
-delete-then-insert inside their transaction. Nothing is TRUNCATEd.
+The step order is the dependency graph; the mechanics live in pipeline/layer.py.
 
 Start from the repo root:
     python -m pipeline.silver.build              all steps
@@ -22,22 +17,12 @@ Start from the repo root:
     python -m pipeline.silver.build --reset      drop the silver schema first
 """
 import sys
-from typing import NamedTuple
-
-import psycopg
-from psycopg import sql
 
 import paths
-
-
-class Step(NamedTuple):
-    """One silver step: which SQL file runs, and which table to count after."""
-    sql_file: str
-    table: str | None
-    """Table whose row count is printed. None for steps that only set things up."""
-
+from pipeline.layer import Layer, Step
 
 STEPS = {
+
     "extensions":      Step("00_extensions.sql", None),
     "quality":         Step("01_quality.sql", None),
     "bus_stop":        Step("10_bus_stop.sql", "bus_stop"),
@@ -58,40 +43,14 @@ STEPS = {
     "traffic_hourly":  Step("51_traffic_hourly.sql", "traffic_segment_hourly"),
     "traffic_daypart": Step("52_traffic_daypart.sql", "traffic_segment_daypart"),
     "stop_traffic":    Step("53_bus_stop_traffic.sql", "bus_stop_traffic"),
+    "lga":             Step("60_lga.sql", "lga"),
+    "rent_lga":        Step("61_rent_lga.sql", "rent_lga"),
+    "route":           Step("62_route.sql", "route"),
+    "stop_lga":        Step("63_bus_stop_lga.sql", "bus_stop_lga"),
     "stop_profile":    Step("90_bus_stop_profile.sql", "bus_stop_profile"),
 }
 
-
-def count_rows(conn, table: str) -> int:
-    """Row count of silver.<table>."""
-    query = sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier("silver", table))
-    return conn.execute(query).fetchone()[0]
-
-
-def run_step(conn, name: str) -> None:
-    """Runs one step in its own transaction and prints what it produced."""
-    step = STEPS[name]
-    statements = (paths.SILVER_SQL_DIR / step.sql_file).read_text(encoding="utf-8")
-
-    with conn.transaction():
-        conn.execute(statements)
-
-    if step.table is None:
-        print(f"  silver.{name:<24} ok")
-    else:
-        print(f"  silver.{step.table:<24} {count_rows(conn, step.table):>10,} rows")
-
-
-def reset(conn) -> None:
-    """Drops the whole silver schema.
-
-    Only for development and for changes to a table's shape: CREATE TABLE IF NOT
-    EXISTS leaves an existing table alone, so a new column would otherwise never
-    appear. Bronze is untouched, so a reset costs one silver rebuild, not a
-    re-ingest.
-    """
-    print("  dropping schema silver ...")
-    conn.execute("DROP SCHEMA IF EXISTS silver CASCADE")
+_LAYER = Layer("silver", paths.SILVER_SQL_DIR, STEPS)
 
 
 def run(selected: list[str] | None = None) -> None:
@@ -99,22 +58,7 @@ def run(selected: list[str] | None = None) -> None:
 
     Called by pipeline/run.py, but can also be called individually.
     """
-    do_reset = bool(selected) and "--reset" in selected
-    selected = [name for name in (selected or []) if not name.startswith("--")]
-
-    unknown = [name for name in selected if name not in STEPS]
-    if unknown:
-        raise ValueError(
-            f"Unknown step: {', '.join(unknown)}. Allowed: {', '.join(STEPS)}"
-        )
-    # dict order is the dependency order, so never trust the order given on the CLI
-    order = [name for name in STEPS if not selected or name in selected]
-
-    with psycopg.connect(paths.postgres_dsn(), autocommit=True) as conn:
-        if do_reset:
-            reset(conn)
-        for name in order:
-            run_step(conn, name)
+    _LAYER.run(selected)
 
 
 if __name__ == "__main__":

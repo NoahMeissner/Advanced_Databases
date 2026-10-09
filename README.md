@@ -23,20 +23,29 @@ point**: every source is reduced to a per-stop measure so one table answers
 |---|---|---|---|
 | Bronze | `pipeline/bronze/` | `bronze` | An unaltered copy of the source. Every row, including the bad ones. Rows in the file == rows in the table |
 | Silver | `pipeline/silver/` | `silver` | Typed, standardised, quality-flagged, and mapped onto the bus stops. Problems get a `flag_*` column; nothing is deleted |
+| Gold | `pipeline/gold/` | `gold` + Neo4j | The serving layer: one graph, plus the comparison marts. Reads Silver only, never Bronze |
 
 ```bash
-python -m pipeline.run                 # bronze, then silver, then the quality checks
+python -m pipeline.run                 # every layer, then the quality checks
 python -m pipeline.run rent_data       # one bronze source
-python -m pipeline.silver.build        # silver only
-python -m pipeline.silver.build da_hex # one silver step
-python -m pipeline.silver.build --reset   # drop schema silver and rebuild it
-python -m pipeline.silver.quality      # the quality checks on their own
+python -m pipeline.run stop_profile    # one silver step
+python -m pipeline.run graph_node      # one gold step
+python -m pipeline.run --skip-graph    # everything except the Neo4j load
+
+python -m pipeline.silver.build        # silver only   (--reset to drop the schema)
+python -m pipeline.gold.build          # gold SQL only (--reset to drop the schema)
+python -m pipeline.gold.graph          # (re)load the graph into Neo4j
+python -m pipeline.gold.graph --reset  # wipe the Neo4j graph first
+
+python -m pipeline.quality             # all checks   (or: ... quality gold)
 python -m test.data_completness        # bronze: file rows == table rows
 python -m test.silver_integrity        # silver: keys, joins, and the school oracle
+python -m test.gold_integrity          # gold: graph soundness + Postgres/Neo4j parity
 ```
 
 `python -m pipeline.run` exits non-zero if an `error`-level quality check fails,
-so a broken load cannot pass silently.
+so a broken load cannot pass silently. Silver and Gold checks share one
+`dq_run`, because a Gold number is only trustworthy if the Silver under it is.
 
 ## What silver produces
 
@@ -50,6 +59,68 @@ joined. The tables behind it:
 | Schools | `bus_stop_school`, `bus_stop_school_summary` | every stop within **200 m** (one school maps to several stops) |
 | Transit travel time | `bus_edge`, `bus_edge_travel_time` | per stop-to-stop edge, per time band |
 | Traffic volume | `traffic_segment_daypart`, `bus_stop_traffic` | rush / non-rush / night; stops within **500 m** |
+
+## The graph
+
+`gold.graph_node` and `gold.graph_edge` in Postgres are the contract;
+`pipeline/gold/graph.py` projects them into Neo4j for Cypher and GDS. The graph
+is therefore checkable in SQL and still builds when Neo4j is down.
+
+| Node | Key | Count | Carries |
+|---|---|---:|---|
+| `Stop` | `stop_id` | 23,427 | the whole per-stop profile as properties - rent, sales, DA activity, schools nearby, traffic, travel times |
+| `School` | `school_code` | 1,077 | name, level, enrolment, ICSEA |
+| `LGA` | `lga_code` | 33 | the whole `gold.lga_comparison` row |
+| `Route` | `route_id` | 602 | short/long name, agency, headsigns |
+
+| Relationship | | Count | Use it for |
+|---|---|---:|---|
+| `ROUTE_SEGMENT` | Stop→Stop | 47,047 | which routes link two stops, with each route's own timings |
+| `CONNECTS` | Stop→Stop | 28,340 | routing. One per stop pair, carrying `travel_time_s` |
+| `NEAR_SCHOOL` | Stop→School | 2,209 | a school within 200 m - many stops per school |
+| `IN_LGA` | Stop/School→LGA | 23,545 | everything in an LGA, and the rent comparison |
+| `SERVES` | Route→Stop | 46,265 | which stops a route serves |
+
+**`travel_time_s` is the routing weight and is never NULL or zero.** Both would
+break GDS silently: a missing property projects as NaN and propagates along the
+path (Dijkstra then returns NaN *and* picks a distorted route), and a 0-weight
+edge is a free hop. It falls back
+`best_peak → avg_peak → best_offpeak → avg_offpeak → distance at 20 km/h`, and
+`weight_source` on every edge says which was used (83% real peak timings, 6.6%
+distance-estimated).
+
+```cypher
+// one stop, everything around it
+MATCH (s:Stop {node_key: '201023'}) RETURN s;
+
+// schools shared by several stops - a traversal, not a join
+MATCH (sc:School)<-[:NEAR_SCHOOL]-(st:Stop)
+WITH sc, count(st) AS stops WHERE stops > 5
+RETURN sc.school_name, stops ORDER BY stops DESC;
+
+// fastest timetabled journey, via GDS
+CALL gds.graph.project('busgraph', 'Stop',
+     {CONNECTS: {properties: 'travel_time_s'}});
+MATCH (a:Stop {node_key: '201023'}), (b:Stop {node_key: '212214'})
+CALL gds.shortestPath.dijkstra.stream('busgraph',
+     {sourceNode: a, targetNode: b, relationshipWeightProperty: 'travel_time_s'})
+YIELD totalCost RETURN totalCost / 60 AS minutes;
+```
+
+Neo4j Browser: http://localhost:7474 (`grep NEO4J_PASSWORD .env`).
+
+## Comparison marts
+
+| Table | Grain | Answers |
+|---|---|---|
+| `gold.lga_comparison` | 33 LGAs | highest rent, most development, dearest sales, most stops - with `rank_*` columns so "highest" is a column, not a client-side sort |
+| `gold.traffic_ranking` | 6 segments | most traffic by rush / non-rush / night |
+
+`silver.lga` is the conformed LGA dimension these rest on. Four sources spell
+the same LGA four ways (`Parramatta` / `City of Parramatta Council` /
+`PARRAMATTA` / `BAYSIDE (NSW)`); `silver.lga_key()` is the single function they
+all go through, and all 33 councils resolve to a key the sales districts and
+school LGAs also produce.
 
 ### Spatial conventions
 
@@ -90,4 +161,6 @@ joined. The tables behind it:
 | Schools outside the study area | 1,133 of 2,210 | The source is NSW-wide, down to Lord Howe Island. Kept, flagged, and left unprojected |
 | `zoning` blank | 50% | Reported, never filtered on |
 | Recent sale periods incomplete | last ~7 months | 10% of sales are first published more than 207 days after contract, so recent medians keep moving. `flag_period_incomplete` marks them |
-| `bronze.rent_data` | 48 rows | Also a sample, and LGA-level only, so it has no path to a stop yet. `lga_name` / `lga` / `district_name` / `council_name` are four unconformed spellings of the same thing |
+| Rent is LGA-level and tiny | 48 rows, 6 LGAs | So only **4,568 of 23,427 stops (19.5%)** carry a rent figure, and "highest rent in Sydney" compares 6 LGAs, not 33. `has_rent_data` is why a NULL cannot be read as cheap |
+| Stop to LGA is inferred, not surveyed | 22,599 of 23,427 | No LGA boundary polygons on disk, so the LGA is the majority council among DA applications within 1 km (median 197 points behind each choice, nearest 69 m). 828 Illawarra / South Coast stops get **no** LGA rather than a wrong one - the nearest council was up to 113 km away |
+| A suppressed rent is not a cheap rent | some quarters | `reliability_flag = 'x'` means the publisher withheld it; `flag_suppressed` keeps that apart from missing |

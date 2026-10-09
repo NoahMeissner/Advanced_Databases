@@ -26,6 +26,8 @@ Exit code 0 = everything consistent, 1 = at least one check failed.
 """
 import sys
 
+from test.report import report, summarise
+
 import psycopg
 
 import paths
@@ -33,12 +35,6 @@ from pipeline.bronze.load import SOURCES, to_snake_case
 
 # How closely our recomputed 300 m match must agree with the source's own answer
 ORACLE_MIN_AGREEMENT = 0.95
-
-
-def report(label: str, ok: bool, detail: str = "") -> bool:
-    """Prints one result line; returns ok so callers can collect it."""
-    print(f"  {label:<44} {'OK' if ok else 'ERROR':<6} {detail}")
-    return ok
 
 
 def check_counts(conn) -> list[bool]:
@@ -174,12 +170,7 @@ def run() -> bool:
                    + check_referential_integrity(conn)
                    + check_proximity_oracle(conn))
 
-    failed = results.count(False)
-    if failed:
-        print(f"\n{failed} of {len(results)} checks failed.")
-    else:
-        print(f"\nAll {len(results)} checks passed.")
-    return failed == 0
+    return summarise(results)
 
 
 if __name__ == "__main__":
