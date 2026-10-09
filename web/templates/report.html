@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% import "_components/parts.html" as ui %}
+{% block title %}{{ report.address.address_text }} · {{ product_name }}{% endblock %}
+{% block head %}<script defer src="{{ url_for('static', filename='print.js') }}"></script>{% endblock %}
+
+{% block body %}
+<div class="viewer">
+  {{ ui.app_header(product_name, report, view, hour_choices) }}
+
+  <main>
+    <div class="page-caption no-print">
+      <span>{{ report.file_name }}</span>
+      <span>A4 · 1 page</span>
+    </div>
+
+    {# This article is the A4 sheet and is exactly what the print stylesheet
+       keeps, so "Download PDF" is the browser's own print-to-PDF. #}
+    <article class="page">
+      <div class="page-head">
+        <span class="brand"><span class="logo-dot"></span>{{ product_name }}</span>
+        <span class="meta">Address report · {{ report.generated_on.strftime('%d %B %Y') }}</span>
+      </div>
+
+      <section style="display:flex;flex-direction:column;gap:10px">
+        <h1>{{ report.address.address_text }}</h1>
+        <p class="summary">{{ report.summary }}</p>
+      </section>
+
+      <section class="key-figures">
+        {% for figure in report.key_figures %}{{ ui.key_figure(figure) }}{% endfor %}
+      </section>
+
+      <div class="sections">
+        <section class="section">
+          {{ ui.eyebrow('01', 'Schools', 'dot-schools') }}
+          {% if report.schools %}
+            <h2>{{ report.schools | length }}
+              school{{ 's' if report.schools | length != 1 }} within a
+              {{ walk_minutes }}-minute walk</h2>
+            <ol class="rows" style="list-style:none">
+              {% for school in report.schools[:school_list_limit] %}
+              <li class="row">
+                <span class="rank">{{ school.rank }}</span>
+                <span class="grow">{{ school.name }}{% if school.level %} · {{ school.level }}{% endif %}</span>
+                <span class="row-value">{{ school.distance_m }} m</span>
+              </li>
+              {% endfor %}
+            </ol>
+            {% if report.schools | length > school_list_limit %}
+            <span class="note">{{ report.schools | length - school_list_limit }} more within
+              walking distance; all are shown on the map.</span>
+            {% endif %}
+          {% else %}
+            <h2>No school within walking distance</h2>
+            <span class="note">Nothing in the school dataset falls inside the
+              search radius of this address.</span>
+          {% endif %}
+        </section>
+
+        <section class="section">
+          {{ ui.eyebrow('02', 'Street activity', 'dot-activity') }}
+          <h2>{{ report.activity.label }} — {{ report.activity.trips_per_day }}
+            scheduled bus trips a day nearby</h2>
+          <div class="scale">
+            <div class="scale-track">
+              <span class="scale-marker" style="left:{{ report.activity.scale_position }}%"></span>
+            </div>
+            <div class="scale-ends"><span>Quiet</span><span>Busy</span></div>
+          </div>
+          <div class="rows">
+            <div class="row">
+              <span class="grow">Bus trips per day</span>
+              <span class="row-value">{{ report.activity.trips_per_day }}</span>
+            </div>
+            <div class="row">
+              <span class="grow">Nearest bus segment</span>
+              <span class="row-value">
+                {{ report.activity.busiest_segment_m if report.activity.busiest_segment_m is not none else '—' }} m</span>
+            </div>
+          </div>
+          <span class="note">A proxy for how busy the street is, not a noise
+            measurement. No noise data exists for this project.</span>
+        </section>
+
+        <section class="section">
+          {{ ui.eyebrow('03', 'Commute', 'dot-commute') }}
+          {% if report.commute.minutes_to_central is not none %}
+            <h2>{{ report.commute.minutes_to_central | int }} minutes to the city centre</h2>
+          {% elif report.commute.stop %}
+            <h2>Central Station is not reachable by bus from here</h2>
+          {% else %}
+            <h2>No bus stop within walking distance</h2>
+          {% endif %}
+          <div class="rows">
+            <div class="row">
+              <span class="grow">Central Station</span>
+              <span class="qualifier">by bus, {{ report.commute.time_of_day.clock }}</span>
+              <span class="row-value pad">
+                {{ (report.commute.minutes_to_central | int ~ ' min')
+                   if report.commute.minutes_to_central is not none else '—' }}</span>
+            </div>
+            <div class="row">
+              <span class="grow">Reachable area</span>
+              <span class="qualifier">{{ report.commute.n_stops_reachable }} stops</span>
+              <span class="row-value pad">{{ report.commute.reach_minutes }} min</span>
+            </div>
+            <div class="row">
+              <span class="grow">Measured from</span>
+              <span class="qualifier">{{ report.commute.n_routes_available }} routes</span>
+              <span class="row-value pad">{{ report.commute.n_seed_stops }} stops</span>
+            </div>
+          </div>
+          <span class="note">
+            Every stop within {{ 800 }} m is a starting point, not just the nearest
+            ({% if report.commute.stop %}{{ report.commute.stop.stop_name }},
+            {{ report.commute.stop.distance_m | int }} m{% else %}none{% endif %}).
+            Scheduled buses at {{ report.commute.time_of_day.caption }}; walking and
+            riding only, no waiting. The area is on the interactive map.</span>
+        </section>
+
+        <section class="section">
+          {{ ui.eyebrow('04', 'Market', 'dot-market') }}
+          {% if report.market.change.pct is not none %}
+            <h2>Prices have
+              {{ 'risen' if report.market.change.pct >= 0 else 'fallen' }}
+              {{ report.market.change.pct | abs | round | int }}% since
+              {{ report.market.change.from_year }}</h2>
+          {% elif report.market.median_price %}
+            <h2>Median price {{ '{:,}'.format(report.market.median_price) }}</h2>
+          {% else %}
+            <h2>No sales recorded nearby</h2>
+          {% endif %}
+          <div class="market-grid">
+            <div class="market-cell">
+              <div class="head">
+                <span>Median price</span>
+                <span class="row-value">
+                  {{ ('$' ~ '{:,}'.format(report.market.median_price))
+                     if report.market.median_price else '—' }}</span>
+              </div>
+              {{ ui.sparkline(report.market.price_series, '--layer-market',
+                              'Median sale price by year') }}
+            </div>
+            <div class="market-cell">
+              <div class="head">
+                <span>Median rent, house</span>
+                <span class="row-value">
+                  {{ ('$' ~ (report.market.rent.house | round | int) ~ '/wk')
+                     if report.market.rent.house else 'n/a' }}</span>
+              </div>
+              <div class="head">
+                <span>Median rent, unit</span>
+                <span class="row-value">
+                  {{ ('$' ~ (report.market.rent.flat | round | int) ~ '/wk')
+                     if report.market.rent.flat else 'n/a' }}</span>
+              </div>
+              <div class="head">
+                <span>Price per m²</span>
+                <span class="row-value">
+                  {{ ('$' ~ '{:,}'.format(report.market.price_per_m2))
+                     if report.market.price_per_m2 else '—' }}</span>
+              </div>
+            </div>
+          </div>
+          {% if report.rankings %}
+          <div class="rows">
+            {{ ui.rank_row('Suburb by median price', report.rankings.price) }}
+            {{ ui.rank_row('Suburb by price per m²', report.rankings.price_per_m2) }}
+            {% if report.rankings.growth.known %}
+            {{ ui.rank_row('Suburb by 5-year growth', report.rankings.growth) }}
+            {% endif %}
+            {% if report.rankings.rent_house.known %}
+            {{ ui.rank_row('LGA by median rent', report.rankings.rent_house) }}
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <div class="rows">
+            <div class="row">
+              <span class="grow">Development pipeline</span>
+              <span class="qualifier">{{ report.investment.pipeline_n }} applications</span>
+              <span class="row-value pad">
+                {{ ('$' ~ (report.investment.pipeline_value / 1000000) | round | int ~ 'm')
+                   if report.investment.pipeline_value else '—' }}</span>
+            </div>
+            <div class="row">
+              <span class="grow">Already determined</span>
+              <span class="qualifier">{{ report.investment.determined_n }} applications</span>
+              <span class="row-value pad">
+                {{ ('$' ~ (report.investment.determined_value / 1000000) | round | int ~ 'm')
+                   if report.investment.determined_value else '—' }}</span>
+            </div>
+          </div>
+          <span class="note">{{ report.market.n_sales }} standard sales within about
+            900 m{% if report.market.rent.lga_name %}; rent is the
+            {{ report.market.rent.lga_name }} median{% endif %}.
+            {% if report.investment.pipeline_dwellings %}Pipeline adds
+            {{ report.investment.pipeline_dwellings }} dwellings — approved work is
+            already counted in prices, the pipeline is not.{% endif %}</span>
+        </section>
+      </div>
+
+      <div class="page-foot">
+        <span>Data: {{ data_sources }}</span>
+        <span>{{ report.address.coordinates_label }}</span>
+        <span>Page 1 / 1</span>
+      </div>
+    </article>
+
+    <ul class="caveats no-print">
+      {% for caveat in report.caveats %}<li>{{ caveat }}</li>{% endfor %}
+    </ul>
+  </main>
+</div>
+{% endblock %}

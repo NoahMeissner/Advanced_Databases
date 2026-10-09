@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS gold.lga_comparison (
     rank_da_applications       integer,
     rank_n_stops               integer,
 
+    n_ranked_rent              integer     NOT NULL DEFAULT 0,
     has_rent_data              boolean     NOT NULL DEFAULT false,
     has_sales_data             boolean     NOT NULL DEFAULT false,
     has_school_data            boolean     NOT NULL DEFAULT false,
@@ -72,7 +73,7 @@ INSERT INTO gold.lga_comparison
      da_n_applications, da_n_modifications, da_sum_new_dwellings, da_median_cost,
      median_rent_weekly_house, median_rent_weekly_flat, rent_period, rent_new_bonds,
      rank_median_rent_house, rank_median_sale_price, rank_da_applications, rank_n_stops,
-     has_rent_data, has_sales_data, has_school_data)
+     n_ranked_rent, has_rent_data, has_sales_data, has_school_data)
 WITH stops AS (
     SELECT sl.lga_code,
            count(*)::integer                                        AS n_stops,
@@ -148,6 +149,9 @@ SELECT lga_code, lga_name, n_stops, n_low_conf, avg_routes, avg_peak_s,
             THEN rank() OVER (ORDER BY median_price DESC NULLS LAST) END,
        rank() OVER (ORDER BY n_apps DESC),
        rank() OVER (ORDER BY n_stops DESC),
+       -- the real denominator: rent exists for 6 of 33 LGAs, so a bare "2nd"
+       -- would imply a Sydney-wide ranking this data cannot support
+       count(*) FILTER (WHERE house IS NOT NULL) OVER ()::integer,
        (house IS NOT NULL OR flat IS NOT NULL),
        n_sales > 0,
        n_schools > 0

@@ -1,0 +1,60 @@
+/* Design tokens — address report site (v0.2, minimal) */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap");
+
+:root {
+  /* Neutrals — the whole interface */
+  --color-ground: #FAFAF9;      /* page background */
+  --color-surface: #FFFFFF;     /* inputs, panels, PDF page */
+  --color-subtle: #F3F4F1;      /* hover / active row */
+  --color-segment: #EEEFEB;     /* view-switch track, map land */
+  --color-viewer: #E9EAE6;      /* grey behind the PDF page */
+  --color-line: #E4E6E3;        /* hairlines */
+  --color-border: #D3D6D2;      /* input + secondary button border */
+  --color-muted: #6B716E;       /* captions, labels */
+  --color-ink-2: #474D4A;       /* body copy */
+  --color-ink: #111412;         /* headings, primary button */
+
+  /* Data layers — map + report markers only, always with an icon/label */
+  --layer-schools: #3457B2;
+  --layer-commute: #2F7D6B;
+  --layer-noise: #E0A33A;
+  --layer-market: #7655B8;
+  --layer-market-down: #C9BDE6;
+  --noise-scale: linear-gradient(90deg, #F7EBCF, #E0A33A, #A65A10);
+
+  /* Map base */
+  --map-land: #EEEFEB;
+  --map-water: #DDE3E4;
+  --map-park: #DCE5D3;
+  --map-road: #FFFFFF;
+  --map-road-casing: #DADDD7;
+  --map-rail: #9AA09C;
+
+  /* Type */
+  --font-sans: "Geist", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --text-display: 500 clamp(32px, 4vw, 56px)/1.08 var(--font-sans);  /* tracking -0.035em */
+  --text-h1: 500 36px/44px var(--font-sans);                          /* tracking -0.03em */
+  --text-h2: 500 20px/28px var(--font-sans);                          /* tracking -0.015em */
+  --text-body: 400 15px/24px var(--font-sans);
+  --text-label: 400 13px/18px var(--font-sans);
+  --text-data: 400 28px/1.1 var(--font-mono);                          /* tracking -0.02em */
+  --text-data-sm: 400 14px/20px var(--font-mono);
+
+  /* Space (4-pt) */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px; --space-24: 96px;
+
+  /* Shape & depth */
+  --radius: 8px;
+  --radius-pill: 999px;           /* toggle switches only */
+  --border: 1px solid var(--color-line);
+  --shadow-float: 0 0 0 1px rgba(17,20,18,.06), 0 6px 20px rgba(17,20,18,.08); /* only over the map */
+  --shadow-page: 0 1px 2px rgba(17,20,18,.08), 0 12px 32px rgba(17,20,18,.10);  /* PDF page */
+
+  /* Layout */
+  --content-max: 1200px;
+  --pdf-page-width: 794px;   /* A4 @ 96dpi */
+  --pdf-page-height: 1123px;
+  --hit-target: 44px;
+}

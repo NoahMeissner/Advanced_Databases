@@ -27,10 +27,16 @@ STEPS = {
     "schema":          Step("00_schema.sql", None),
     "lga_comparison":  Step("10_lga_comparison.sql", "lga_comparison"),
     "traffic_ranking": Step("11_traffic_ranking.sql", "traffic_ranking"),
+    "suburb_comparison": Step("12_suburb_comparison.sql", "suburb_comparison"),
     # graph_node reads gold.lga_comparison for the LGA node properties, so the
     # marts have to be built first - this order is the dependency graph.
     "graph_node":      Step("20_graph_node.sql", "graph_node"),
     "graph_edge":      Step("21_graph_edge.sql", "graph_edge"),
+    # the relational routing table the website's reach search uses
+    "connects_edge":   Step("22_connects_edge.sql", "connects_edge"),
+    # serving tables for the website: the geocoder and the activity layer
+    "address_point":   Step("30_address_point.sql", "address_point"),
+    "transit_segment": Step("31_transit_segment.sql", "transit_segment"),
 }
 
 _LAYER = Layer("gold", paths.GOLD_SQL_DIR, STEPS)

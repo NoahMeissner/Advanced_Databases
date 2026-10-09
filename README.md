@@ -2,7 +2,8 @@
 
 A medallion pipeline over NSW open data, with **Sydney bus stops as the reference
 point**: every source is reduced to a per-stop measure so one table answers
-"what is happening around this stop".
+"what is happening around this stop" — plus a website that turns an address into
+a one-page report and a map.
 
 ## Installation
 
@@ -23,7 +24,8 @@ point**: every source is reduced to a per-stop measure so one table answers
 |---|---|---|---|
 | Bronze | `pipeline/bronze/` | `bronze` | An unaltered copy of the source. Every row, including the bad ones. Rows in the file == rows in the table |
 | Silver | `pipeline/silver/` | `silver` | Typed, standardised, quality-flagged, and mapped onto the bus stops. Problems get a `flag_*` column; nothing is deleted |
-| Gold | `pipeline/gold/` | `gold` + Neo4j | The serving layer: one graph, plus the comparison marts. Reads Silver only, never Bronze |
+| Gold | `pipeline/gold/` | `gold` + Neo4j | The serving layer: one graph, the comparison marts, and the tables the site reads. Reads Silver only, never Bronze |
+| Website | `web/` | — | Address → report + map. Reads Gold and Silver through one `get_report()` function |
 
 ```bash
 python -m pipeline.run                 # every layer, then the quality checks
@@ -41,7 +43,171 @@ python -m pipeline.quality             # all checks   (or: ... quality gold)
 python -m test.data_completness        # bronze: file rows == table rows
 python -m test.silver_integrity        # silver: keys, joins, and the school oracle
 python -m test.gold_integrity          # gold: graph soundness + Postgres/Neo4j parity
+python -m test.web_smoke               # site: routes, geocoder, and agreement with SQL
 ```
+
+## The website
+
+```bash
+./start.sh                             # databases
+python -m pipeline.run                 # load everything (once)
+python -m web.app                      # http://127.0.0.1:5000
+```
+
+| Screen | What it does |
+|---|---|
+| `/` | Type an address. Autocomplete over 147,561 points, trigram-ranked |
+| `/report?address=…&at=HH` | The A4 page: schools, street activity, commute, market. "Download PDF" is the browser's own print — the A4 sheet *is* the print target (`@page { size: A4 }`) |
+| `/map?address=…&at=HH` | The same findings as four toggleable Leaflet layers |
+
+`?at=HH` is the time of day. It changes the reachable area and the trip to
+Central, and the URL carries it so a link reproduces exactly what you saw.
+
+Built from the design handoff in `design/` — `DESIGN.md` is the spec and
+`design/tokens.css` is copied verbatim into `web/static/` as the single source
+of every colour, size and radius.
+
+### The PDF really is one A4 page
+
+"Download PDF" is the browser's own print; the A4 sheet on screen *is* the print
+target. Getting that to actually produce one page took fixing three faults, the
+first of which was doing most of the damage:
+
+1. **The responsive breakpoint also matched the paper.** A4 is ~794 px wide at
+   96 dpi, so an unscoped `@media (max-width: 860px)` applied *when printing* —
+   the 2×2 grid collapsed to one column and the report ran to two pages. The
+   responsive block is now `@media screen and (...)`, and the print block
+   re-asserts the grid explicitly.
+2. **Chrome drops background colours** unless the user ticks "Background
+   graphics", so the section dots, the activity gradient and the rule under the
+   header printed as blank gaps. Fixed with `print-color-adjust: exact`.
+3. **`@page { margin: 0 }` left nowhere** for Chrome's own URL/date/page-number
+   furniture, which then printed over the report. Now `margin: 12mm 14mm`.
+
+Measured afterwards across five addresses of different lengths, against the
+1,032 px a printed A4 actually offers:
+
+| Address | Printed height | Headroom |
+|---|---:|---:|
+| Harris Street, Ultimo | 959 px | 73 px |
+| 59 Enmore Road, Newtown | 959 px | 73 px |
+| 1 Pitt Street, Sydney | 959 px | 73 px |
+| McEvoy Road, Padstow | 918 px | 114 px |
+| Richards Road, Appin | 873 px | 159 px |
+
+The compaction is deliberately light — body text stays at the design's 13 px —
+because the breakpoint fix did most of the work. `web/static/print.js` is the
+guarantee for anything unusual: it measures on `beforeprint` and scales only if
+a particularly full report would still overflow.
+
+**Everything on screen comes from `web/report.py:get_report()`.** Templates never
+query the database, so the report and the map cannot disagree — and
+`test/web_smoke.py` re-runs the same figures straight against `silver` to prove
+the page matches the warehouse.
+
+### Section 02 is street activity, not noise
+
+The design's second section is Noise — decibels, nearest main road, heat bands.
+**This project has no noise data and no road centrelines**, and its traffic
+source is six synthetic segments with no coordinates. Rather than invent
+decibels, section 02 reports scheduled bus traffic on real geometry
+(`gold.transit_segment`, 28,340 segments, 1–1,279 trips/day) as a street-activity
+proxy, and says so on the page.
+
+### Reach is seeded from every nearby stop, not the nearest one
+
+The first version started the 20-minute search at the single closest stop. For
+`HARRIS STREET, ULTIMO` that is *Harris St At Macarthur St* — 16 m away, served
+by **one** route — while **28 stops within 800 m serve 41 routes**, including
+UTS Broadway (15 routes) and Central Station (30 routes), both ~520 m away.
+Nobody walks to the nearest stop if a hub is two minutes further.
+
+The search now starts from **every** stop in walking distance, each seeded with
+the time it takes to walk there. For Ultimo that is **286 reachable stops
+instead of 28** — 10× more network, and the correct answer.
+
+It also moved from Neo4j to Postgres, because multi-source means one Dijkstra
+per seed in GDS:
+
+| Approach | 20-min reach | Time |
+|---|---:|---:|
+| Neo4j GDS, 28 separate Dijkstras | 286 stops | 3.10 s |
+| Neo4j GDS, one `UNWIND` statement | 286 stops | 3.51 s |
+| **Postgres recursive CTE over `gold.connects_edge`** | **286 stops** | **0.03 s** |
+
+Batching the Cypher does not help — the cost is the 28 full traversals, not the
+round-trips. Neo4j still holds the graph for Cypher and GDS; `gold.connects_edge`
+is a relational projection of the same edges, and a quality check asserts the two
+cannot drift.
+
+### Time of day
+
+The hour picker maps onto the two service bands the data has — there is no raw
+GTFS feed, so hourly detail does not exist and the caption always names the band
+an hour resolved to. The bands are not cosmetic: travel times differ by only ~6%,
+but **1,703 stop pairs run at peak only and 2,375 off-peak only**, so changing
+band changes which connections exist. Ultimo reaches 172 stops at 08:00 and 420
+at 14:00.
+
+Waiting and transfer time are **not** counted — frequency data exists, but the
+band window lengths were lost upstream, so turning trip counts into minutes would
+be invention.
+
+### Rankings
+
+`gold.suburb_comparison` ranks **776 suburbs** (every locality with ≥30 usable
+sales) on median price, price per m² and 5-year growth. Rent ranks separately, out
+of **6 LGAs**, because that is all the rent data covers — the denominator is
+always printed next to the rank.
+
+Both price measures are published because they disagree, and the disagreement is
+the point:
+
+| | Ultimo | Newtown | Mosman | Blacktown |
+|---|---:|---:|---:|---:|
+| median price | $750k · **682nd** | $1.46m · 268th | $2.59m · 75th | $780k · 659th |
+| price per m² | $13,289 · **45th** | $12,762 · 52nd | $11,512 · 64th | $2,076 · 491st |
+
+Ultimo looks like one of Sydney's cheaper suburbs by median and one of its dearest
+per square metre — it is mostly small apartments. The report raises that
+automatically as a caveat whenever the two ranks diverge by more than 200 places.
+
+### The development layer
+
+Square markers, not circles — DESIGN.md §7 requires a layer to be identifiable
+without relying on colour, and the schools are already circles. The fifth colour
+(`--layer-development`, brick red) is defined in `web/static/app.css`, **not** in
+`tokens.css`, so that file stays the handoff's own copied verbatim.
+
+Within 1 km of a city address there are ~1,878 applications, so plotting all of
+them would be unreadable. The layer shows the ~57 still in the pipeline solid,
+plus determined ones over $1m (~300) faint. Marker size is √cost, so a $200m
+tower reads bigger than a $2m renovation without swallowing the block.
+
+Note the scopes differ on purpose and each is labelled: the report's investment
+figure covers the ~900 m hexagon neighbourhood, the map layer covers 1 km.
+
+### Development investment
+
+The Market section splits the **pipeline** (Under Assessment, Additional
+Information Requested, Deferred Commencement, Pending Lodgement, On Exhibition)
+from what is **already determined**. Only the pipeline is forward-looking: a
+determined 2019 application describes what already happened. Sydney-wide that is
+6,633 applications worth $27.2 bn against 154,477 determined worth $238.8 bn.
+
+### Geocoding without G-NAF
+
+`gold.address_point` is the gazetteer: 120,995 exact development-application
+addresses (`accuracy_m = 0`) plus 26,566 street centres (`accuracy_m` = that
+street's own measured spread, floored at 50 m). Two guards keep it honest:
+
+- Typing a house number we do not have falls back to the **street centre** rather
+  than snapping to a neighbour's house and claiming exact precision.
+- A query that scores below 0.50 trigram similarity returns **nothing**. Real
+  queries score 0.63–1.00; an invented street scores 0.37.
+
+The precision used is shown in the suggestion list, on the map, and in the
+report's caveats.
 
 `python -m pipeline.run` exits non-zero if an `error`-level quality check fails,
 so a broken load cannot pass silently. Silver and Gold checks share one

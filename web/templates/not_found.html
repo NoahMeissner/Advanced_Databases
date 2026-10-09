@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% import "_components/parts.html" as ui %}
+{% block title %}Address not found · {{ product_name }}{% endblock %}
+
+{% block body %}
+<div class="start">
+  <header>{{ ui.logo(product_name) }}</header>
+  <main>
+    <div class="notice">
+      <h1 style="font:var(--text-h2);font-family:var(--font-sans)">No match for that address</h1>
+      <p style="color:var(--color-ink-2)">
+        Nothing in the data resolves “{{ query }}”. Addresses come from
+        development applications and street records for Greater Sydney, so a
+        very new street — or one that has never had an application — may not be
+        listed. Try just the street and suburb.
+      </p>
+      <div><a class="btn btn-secondary" href="/">Try another address</a></div>
+    </div>
+  </main>
+</div>
+{% endblock %}

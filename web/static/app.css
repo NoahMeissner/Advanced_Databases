@@ -1,0 +1,479 @@
+/* Components from design/DESIGN.md section 4, built on tokens.css only.
+   No colour, size or radius is hard-coded here that is not a token. */
+
+/* One token the handoff does not define. tokens.css is the design file copied
+   verbatim, so the extension lives here instead of editing it.
+   Brick red is the only hue not already spoken for: schools 214deg, commute
+   166deg, activity 40deg, market 266deg. Development markers are also SQUARE,
+   because DESIGN.md section 7 requires a layer to be identifiable without
+   relying on colour. */
+:root {
+  --layer-development: #B5503F;
+  --layer-development-faint: #D9A89F;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font: var(--text-body);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--color-ink); }
+a:hover { color: var(--color-ink-2); }
+.mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+
+/* every number is Mono, per the principle "numbers look like data" */
+.value, .figure-value, .row-value { font-family: var(--font-mono); }
+
+/* --- logo / header ------------------------------------------------------ */
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; font-weight: 500; font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.logo-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 2.5px var(--color-ground), 0 0 0 3.5px var(--color-ink);
+}
+
+.app-header {
+  border-bottom: var(--border);
+  background: var(--color-ground);
+}
+.app-header-inner {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  padding: 14px var(--space-6);
+}
+.address-pill {
+  flex: 1 1 260px; min-width: 0; max-width: 520px;
+  display: flex; align-items: center; gap: var(--space-3);
+  height: 40px; padding: 0 14px;
+  border: var(--border); border-radius: var(--radius);
+  background: var(--color-surface);
+  text-decoration: none; font-size: 14px;
+}
+.address-pill span:first-child {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.address-pill .change { margin-left: auto; color: var(--color-muted); }
+
+/* --- ViewSwitch (segmented control) ------------------------------------- */
+.view-switch {
+  display: flex; gap: 2px; padding: 3px;
+  background: var(--color-segment); border-radius: var(--radius);
+  margin-left: auto;
+}
+.view-switch a {
+  display: flex; align-items: center; height: 36px; padding: 0 var(--space-4);
+  border-radius: 6px; font-weight: 500; font-size: 14px;
+  text-decoration: none; color: var(--color-muted);
+}
+.view-switch a[aria-current="page"] {
+  background: var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-line);
+  color: var(--color-ink);
+}
+
+/* --- buttons ------------------------------------------------------------ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: var(--hit-target); padding: 0 var(--space-4);
+  border: 0; border-radius: var(--radius);
+  font: 500 14px/1 var(--font-sans); text-decoration: none; cursor: pointer;
+}
+.btn-primary { background: var(--color-ink); color: var(--color-surface); }
+.btn-secondary {
+  background: var(--color-surface); color: var(--color-ink);
+  border: 1px solid var(--color-border);
+}
+.link {
+  font-weight: 500; font-size: 14px;
+  text-decoration: underline; text-underline-offset: 4px;
+  text-decoration-color: #C3C7C3;
+}
+
+/* --- AddressSearch ------------------------------------------------------ */
+.search {
+  display: flex; flex-direction: column; width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-ink); border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 0 4px rgba(17, 20, 18, .05);
+  text-align: left;
+}
+.search-row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 0 var(--space-2) 0 20px;
+}
+.search-row svg { flex: none; }
+.search input {
+  flex: 1; min-width: 0; height: 64px;
+  border: 0; outline: none; background: transparent;
+  font: 400 18px/1 var(--font-sans); color: var(--color-ink);
+}
+.search input::placeholder { color: var(--color-muted); }
+.search button[type="submit"] {
+  height: 48px; padding: 0 22px; border-radius: 7px; flex: none;
+  background: var(--color-ink); color: var(--color-surface);
+  font: 500 15px/1 var(--font-sans); border: 0; cursor: pointer;
+}
+.suggestions { display: none; flex-direction: column; border-top: var(--border); }
+.suggestions.open { display: flex; }
+.suggestions button {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 14px 20px 14px 52px;
+  border: 0; background: transparent; cursor: pointer;
+  font: 400 15px/1.4 var(--font-sans); text-align: left; color: var(--color-ink);
+}
+.suggestions button:hover,
+.suggestions button[aria-selected="true"] { background: var(--color-subtle); }
+.suggestions .primary { font-weight: 500; }
+.suggestions .secondary { color: var(--color-muted); }
+.suggestions .precision {
+  margin-left: auto; font-family: var(--font-mono);
+  font-size: 11px; color: var(--color-muted);
+}
+
+/* --- start screen ------------------------------------------------------- */
+.start { min-height: 100vh; display: flex; flex-direction: column; }
+.start header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); flex-wrap: wrap; padding: var(--space-6) var(--space-8);
+}
+.start main {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: var(--space-12) var(--space-6) 120px; text-align: center;
+}
+.start-inner {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 36px; width: 100%; max-width: 640px;
+}
+.start h1 {
+  font: 500 clamp(32px, 4vw, 44px)/1.1 var(--font-sans);
+  letter-spacing: -0.035em; text-wrap: balance;
+}
+.start .subline { font-size: 16px; line-height: 26px; color: var(--color-muted); }
+.topics {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: var(--space-2) 20px; font-size: 13px; color: var(--color-muted);
+}
+.topic { display: flex; align-items: center; gap: 6px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.dot-schools { background: var(--layer-schools); }
+.dot-activity { background: var(--layer-noise); }
+.dot-commute { background: var(--layer-commute); }
+.dot-market { background: var(--layer-market); }
+.dot-development { background: var(--layer-development); }
+.site-footer {
+  padding: 20px var(--space-8) 28px;
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: var(--space-6); font-size: 13px; color: var(--color-muted);
+}
+
+/* --- report ------------------------------------------------------------- */
+.viewer { background: var(--color-viewer); min-height: 100vh; }
+.viewer main {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding: var(--space-8) var(--space-4) var(--space-16);
+}
+.page-caption {
+  width: 100%; max-width: var(--pdf-page-width);
+  display: flex; justify-content: space-between;
+  font: 400 12px/16px var(--font-mono); color: #5E6461;
+}
+
+/* The A4 sheet. This exact element is what prints. */
+.page {
+  width: 100%; max-width: var(--pdf-page-width);
+  min-height: var(--pdf-page-height);
+  padding: 56px 64px 40px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-page);
+  display: flex; flex-direction: column; gap: 36px;
+  font-size: 13px; line-height: 20px;
+}
+.page-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 14px; border-bottom: 1px solid var(--color-ink);
+}
+.page-head .brand {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-weight: 500; font-size: 13px;
+}
+.page-head .brand .logo-dot {
+  width: 8px; height: 8px;
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-ink);
+}
+.page-head .meta {
+  font: 400 11px/16px var(--font-mono); color: var(--color-muted);
+}
+.page h1 {
+  font: 500 30px/36px var(--font-sans); letter-spacing: -0.03em;
+}
+.page .summary {
+  max-width: 560px; font-size: 14px; line-height: 22px; color: var(--color-ink-2);
+}
+
+.key-figures {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+.key-figure {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding-top: 10px; border-top: var(--border);
+}
+.key-figure .figure-value {
+  font: 400 22px/28px var(--font-mono); letter-spacing: -0.02em;
+}
+.key-figure .label { font-size: 11px; line-height: 16px; color: var(--color-muted); }
+
+.sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px 40px; }
+.section { display: flex; flex-direction: column; gap: 10px; }
+.eyebrow {
+  display: flex; align-items: center; gap: 6px;
+  font: 500 11px/16px var(--font-mono);
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted);
+}
+.section h2 {
+  font: 500 16px/22px var(--font-sans); letter-spacing: -0.01em;
+}
+.rows { display: flex; flex-direction: column; }
+.row {
+  display: flex; gap: 10px; padding: 7px 0; border-top: var(--border);
+}
+.rows .row:last-child { border-bottom: var(--border); }
+.row .grow { flex: 1; }
+.row .rank { font-family: var(--font-mono); color: var(--color-muted); }
+.row .qualifier { color: var(--color-muted); }
+.row-value { font-family: var(--font-mono); }
+.row-value.pad { min-width: 48px; text-align: right; }
+.note { font-size: 11px; line-height: 16px; color: var(--color-muted); }
+
+/* ActivityScale - the design's NoiseScale bar, relabelled */
+.scale { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 2px; }
+.scale-track {
+  position: relative; height: 5px; border-radius: 3px;
+  background: var(--noise-scale);
+}
+.scale-marker {
+  position: absolute; top: -4px; width: 2px; height: 13px;
+  background: var(--color-ink);
+}
+.scale-ends {
+  display: flex; justify-content: space-between;
+  font-size: 11px; line-height: 14px; color: var(--color-muted);
+}
+
+.market-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.market-cell { display: flex; flex-direction: column; gap: var(--space-1); }
+.market-cell .head { display: flex; justify-content: space-between; }
+.market-cell .head span:first-child { color: var(--color-ink-2); }
+
+.page-foot {
+  margin-top: auto; display: flex; justify-content: space-between;
+  gap: var(--space-4); padding-top: var(--space-3);
+  border-top: var(--border);
+  font: 400 10px/14px var(--font-mono); color: var(--color-muted);
+}
+.caveats {
+  width: 100%; max-width: var(--pdf-page-width);
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 12px; line-height: 18px; color: var(--color-muted);
+}
+.caveats li { margin-left: var(--space-4); }
+
+/* --- map ---------------------------------------------------------------- */
+.app { height: 100vh; display: flex; flex-direction: column; }
+.app-body { flex: 1; display: flex; min-height: 0; }
+.sidebar {
+  width: 300px; flex: none; border-right: var(--border);
+  background: var(--color-ground);
+  padding: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-4);
+  overflow-y: auto;
+}
+.sidebar .label { font-size: 13px; color: var(--color-muted); }
+.layer-list { display: flex; flex-direction: column; border-top: var(--border); }
+.layer { display: flex; flex-direction: column; border-bottom: var(--border); }
+.layer > button {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-height: 52px; padding: 0; border: 0; background: transparent;
+  cursor: pointer; text-align: left;
+  font: 500 15px/1 var(--font-sans); color: var(--color-muted);
+}
+.layer > button[aria-pressed="true"] { color: var(--color-ink); }
+.layer .dot { width: 10px; height: 10px; }
+.track {
+  width: 36px; height: 20px; flex: none; border-radius: var(--radius-pill);
+  padding: 2px; display: flex; background: var(--color-border);
+  justify-content: flex-start; transition: background .12s ease;
+}
+.knob { width: 16px; height: 16px; border-radius: 50%; background: var(--color-surface); }
+.layer > button[aria-pressed="true"] .track {
+  background: var(--color-ink); justify-content: flex-end;
+}
+.layer .summary {
+  margin: -6px 0 14px 22px;
+  font-size: 13px; line-height: 20px; color: var(--color-ink-2);
+}
+.layer > button[aria-pressed="false"] + .summary { display: none; }
+
+#map { flex: 1; min-height: 0; background: var(--map-land); position: relative; }
+
+/* Mutes the keyless OSM tiles into the map tokens: desaturated, lifted and
+   softened so the basemap recedes and the data layers carry all the colour. */
+.basemap {
+  filter: grayscale(1) brightness(1.07) contrast(0.86) opacity(0.78);
+}
+.leaflet-container { font: var(--text-label); font-family: var(--font-sans); }
+
+/* map marks - the address is the only black mark on the map */
+.mark-address {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 4px var(--color-surface), 0 0 0 5.5px var(--color-ink);
+}
+/* Development applications: square, so they never read as a school circle. */
+.mark-da {
+  border: 2px solid var(--color-surface);
+  background: var(--layer-development);
+  box-shadow: var(--shadow-float);
+}
+.mark-da-determined {
+  border: 1.5px solid var(--layer-development-faint);
+  background: transparent;
+  box-shadow: none;
+}
+.mark-school {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--layer-schools); border: 2px solid var(--color-surface);
+  display: flex; align-items: center; justify-content: center;
+  font: 500 12px/1 var(--font-mono); color: var(--color-surface);
+  box-shadow: var(--shadow-float);
+}
+.map-legend {
+  position: absolute; left: var(--space-4); bottom: var(--space-4);
+  z-index: 500;
+  background: var(--color-surface); border-radius: var(--radius);
+  box-shadow: var(--shadow-float);
+  padding: 10px var(--space-3);
+  font-size: 12px; line-height: 18px; color: var(--color-ink-2);
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+/* --- not found ---------------------------------------------------------- */
+.notice {
+  max-width: 560px; margin: 96px auto; padding: 0 var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-4); text-align: center;
+}
+
+/* --- responsive --------------------------------------------------------- */
+/* SCREEN ONLY. A4 paper is about 794 px wide at 96 dpi, so an unscoped
+   max-width: 860px query also matches when printing - the 2x2 grid would
+   collapse to one column and the report would run to two pages. Scoping this
+   to `screen` is what keeps the printed sheet in its intended layout. */
+@media screen and (max-width: 860px) {
+  .page { min-height: 0; padding: var(--space-8) var(--space-6); }
+  .key-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sections { grid-template-columns: minmax(0, 1fr); }
+  .app { height: auto; }
+  .app-body { flex-direction: column; }
+  .sidebar { width: 100%; border-right: 0; border-bottom: var(--border); }
+  #map { height: 60vh; flex: none; }
+}
+
+/* --- print: exactly one A4 sheet --------------------------------------- */
+/*
+ * Measured, not guessed: before this block the Ultimo report was 1,115 px of
+ * content against 1,032 px of printable A4, so it spilled onto a second page
+ * while the caption still claimed "A4 - 1 page".
+ *
+ * Three separate faults are fixed here:
+ *   1. the content was too tall           -> the rhythm below is compacted
+ *   2. Chrome drops background colours    -> print-color-adjust: exact
+ *   3. @page margin:0 left nowhere for    -> a real 12mm/14mm page margin
+ *      Chrome's own header/footer, so it
+ *      printed over the report
+ *
+ * web/static/print.js adds the guarantee: it measures before printing and
+ * scales slightly if an unusually full report would still overflow.
+ */
+@media print {
+  @page { size: A4; margin: 12mm 14mm; }
+
+  html, body { background: #FFFFFF; }
+
+  /* Without this Chrome strips every background colour unless the user happens
+     to tick "Background graphics" - the section dots, the activity gradient
+     and the rule under the header would all print as blank gaps. */
+  .page, .page * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .app-header, .page-caption, .caveats, .no-print { display: none !important; }
+
+  .viewer { background: #FFFFFF; min-height: 0; }
+  .viewer main { padding: 0; gap: 0; display: block; }
+
+  .page {
+    width: 100%; max-width: none;
+    /* the @page margin is the paper margin now, so the sheet has no padding */
+    min-height: 0; padding: 0;
+    box-shadow: none;
+    /* Lightly compacted rhythm. The big win was scoping the responsive
+       breakpoint to `screen` (above); this only trims enough to leave real
+       headroom, so the printed sheet keeps the design's proportions instead
+       of looking shrunken. */
+    gap: 24px;
+    font-size: 13px; line-height: 19px;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+
+  .page h1 { font: 500 28px/34px var(--font-sans); letter-spacing: -0.03em; }
+  .page .summary { font-size: 13px; line-height: 20px; }
+
+  .key-figures { gap: 16px; }
+  .key-figure { padding-top: 9px; }
+  .key-figure .figure-value { font: 400 21px/27px var(--font-mono); }
+
+  /* Re-asserted explicitly: A4 is ~794 px wide, so any max-width breakpoint
+     is within range of the paper. The responsive block is scoped to `screen`
+     for that reason, and this makes the printed layout independent of rule
+     order either way. */
+  .sections { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 36px; }
+  .key-figures { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .section { gap: 9px; }
+  .section h2 { font: 500 15px/21px var(--font-sans); }
+  .row { padding: 6px 0; }
+  .note { font-size: 10.5px; line-height: 15px; }
+  .market-grid { gap: 14px; }
+  .market-cell svg { height: 34px; }
+
+  .page-head { padding-bottom: 12px; }
+  .page-foot { padding-top: 12px; font-size: 9.5px; line-height: 13px; }
+
+  /* Nothing may be clipped or scrolled away on paper. */
+  .page, .page * { overflow: visible !important; }
+}
+
+/* --- hour picker -------------------------------------------------------- */
+.hour-picker {
+  display: flex; align-items: center; gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.hour-picker select {
+  height: 40px; padding: 0 var(--space-3);
+  border: 1px solid var(--color-border); border-radius: var(--radius);
+  background: var(--color-surface); color: var(--color-ink);
+  font: 400 14px/1 var(--font-mono); cursor: pointer;
+}
+.hour-picker .band-caption { font-size: 12px; color: var(--color-muted); }
+.hour-picker .label { font-size: 13px; color: var(--color-muted); }

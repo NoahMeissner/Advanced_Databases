@@ -1,0 +1,127 @@
+{# Components from design/DESIGN.md section 4, as reusable macros. #}
+
+{% macro logo(product_name, href='/') %}
+<a class="logo" href="{{ href }}"><span class="logo-dot"></span>{{ product_name }}</a>
+{% endmacro %}
+
+{% macro pin_icon() %}
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"></path>
+  <circle cx="12" cy="9" r="2.5"></circle>
+</svg>
+{% endmacro %}
+
+{# AddressSearch: 64px tall, pin left, black button inside right, suggestions
+   attached below inside the same box behind a hairline. #}
+{% macro address_search(query='', autofocus=false) %}
+<form class="search-form" action="/report" method="get" role="search"
+      style="width:100%" autocomplete="off">
+  <div class="search">
+    <div class="search-row">
+      {{ pin_icon() }}
+      <label class="visually-hidden" for="address"
+             style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Address</label>
+      <input id="address" name="address" type="text" value="{{ query }}"
+             placeholder="Start typing a Sydney street or address"
+             autocomplete="street-address" role="combobox" aria-expanded="false"
+             aria-controls="suggestions" aria-autocomplete="list"
+             {% if autofocus %}autofocus{% endif %}>
+      <button type="submit">Get report</button>
+    </div>
+    <div class="suggestions" id="suggestions" role="listbox" aria-label="Address suggestions"></div>
+  </div>
+</form>
+{% endmacro %}
+
+{% macro view_switch(active, address, hour) %}
+<nav class="view-switch" aria-label="View">
+  <a href="/report?address={{ address | urlencode }}&at={{ hour }}"
+     {% if active == 'report' %}aria-current="page"{% endif %}>Report</a>
+  <a href="/map?address={{ address | urlencode }}&at={{ hour }}"
+     {% if active == 'map' %}aria-current="page"{% endif %}>Map</a>
+</nav>
+{% endmacro %}
+
+{# The hour picker. The data has two service bands, not hourly detail, so the
+   caption always names the band the chosen hour resolved to. #}
+{% macro hour_picker(time_of_day, address, view, hour_choices) %}
+<form class="hour-picker" method="get" action="/{{ view }}">
+  <input type="hidden" name="address" value="{{ address }}">
+  <label class="label" for="at">Time of day</label>
+  <select id="at" name="at" onchange="this.form.submit()">
+    {% for hour, text in hour_choices %}
+    <option value="{{ hour }}" {% if hour == time_of_day.hour %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+  <noscript><button type="submit" class="btn btn-secondary">Apply</button></noscript>
+  <span class="mono band-caption">{{ time_of_day.label }}</span>
+</form>
+{% endmacro %}
+
+{% macro app_header(product_name, report, view, hour_choices) %}
+<header class="app-header no-print">
+  <div class="app-header-inner">
+    {{ logo(product_name) }}
+    <a class="address-pill" href="/?address={{ report.address.address_text | urlencode }}">
+      <span>{{ report.address.address_text }}</span>
+      <span class="change">Change</span>
+    </a>
+    {{ hour_picker(report.commute.time_of_day, report.address.address_text,
+                   view, hour_choices) }}
+    {{ view_switch(view, report.address.address_text, report.commute.time_of_day.hour) }}
+    <button type="button" class="btn btn-primary" onclick="window.print()">Download PDF</button>
+  </div>
+</header>
+{% endmacro %}
+
+{# A rank, phrased with its real denominator so "2nd" never implies Sydney-wide. #}
+{% macro rank_row(label, rank) %}
+<div class="row">
+  <span class="grow">{{ label }}</span>
+  <span class="row-value">{{ rank.summary }}</span>
+</div>
+{% endmacro %}
+
+{% macro key_figure(figure) %}
+<div class="key-figure">
+  <span class="figure-value">{{ figure.value }}</span>
+  <span class="label">{{ figure.label }}</span>
+</div>
+{% endmacro %}
+
+{% macro eyebrow(number, name, dot_class) %}
+<span class="eyebrow"><span class="dot {{ dot_class }}"></span>{{ number }} {{ name }}</span>
+{% endmacro %}
+
+{# Sparkline: 1.5px line in the layer colour, no axes (DESIGN.md 4.8). #}
+{% macro sparkline(series, colour_var='--layer-market', label='') %}
+{% if series | length > 1 %}
+  {% set values = series | map(attribute=1) | list %}
+  {% set lo = values | min %}
+  {% set hi = values | max %}
+  {% set span = (hi - lo) if hi > lo else 1 %}
+  <svg viewBox="0 0 200 44" width="100%" height="40" role="img"
+       aria-label="{{ label }}" preserveAspectRatio="none">
+    <polyline fill="none" stroke="var({{ colour_var }})" stroke-width="1.5"
+              stroke-linejoin="round" vector-effect="non-scaling-stroke"
+              points="
+      {%- for year, value in series -%}
+        {{ (loop.index0 * 200 / (series | length - 1)) | round(1) }},{{ (38 - ((value - lo) / span) * 32) | round(1) }}
+      {% endfor %}"></polyline>
+  </svg>
+{% else %}
+  <span class="note">Not enough sales for a trend.</span>
+{% endif %}
+{% endmacro %}
+
+{% macro layer_toggle(key, name, dot_class, summary, on=false) %}
+<div class="layer" data-layer="{{ key }}">
+  <button type="button" aria-pressed="{{ 'true' if on else 'false' }}">
+    <span class="dot {{ dot_class }}"></span>
+    <span style="flex:1">{{ name }}</span>
+    <span class="track"><span class="knob"></span></span>
+  </button>
+  <p class="summary">{{ summary }}</p>
+</div>
+{% endmacro %}

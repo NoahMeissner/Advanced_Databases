@@ -71,6 +71,11 @@ CREATE TABLE IF NOT EXISTS silver.property_sale (
 CREATE INDEX IF NOT EXISTS property_sale_street_idx   ON silver.property_sale (street_id);
 CREATE INDEX IF NOT EXISTS property_sale_contract_idx ON silver.property_sale (contract_date);
 CREATE INDEX IF NOT EXISTS property_sale_usable_idx   ON silver.property_sale (contract_year) WHERE is_usable;
+-- The website asks "what sold in this hexagon neighbourhood" on every report,
+-- which without this index means a parallel sequential scan of all 680,985
+-- rows (measured: 144 ms, 44,925 buffers, for one address).
+CREATE INDEX IF NOT EXISTS property_sale_hex_idx
+    ON silver.property_sale (hex_id) WHERE is_usable;
 
 INSERT INTO silver.property_sale AS t
     (dealing_number, parcel_seq, property_id, district_code, district_name,

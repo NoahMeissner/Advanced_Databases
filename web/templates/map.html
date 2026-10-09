@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% import "_components/parts.html" as ui %}
+{% block title %}Map · {{ report.address.address_text }} · {{ product_name }}{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.css') }}">
+<script defer src="{{ url_for('static', filename='vendor/leaflet.js') }}"></script>
+<script defer src="{{ url_for('static', filename='map.js') }}"></script>
+{% endblock %}
+
+{% block body %}
+<div class="app">
+  {{ ui.app_header(product_name, report, view, hour_choices) }}
+
+  <div class="app-body">
+    <aside class="sidebar">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span class="label">Layers</span>
+        <span class="label">Turn findings on and off.</span>
+      </div>
+
+      <div class="layer-list">
+        {{ ui.layer_toggle('schools', 'Schools', 'dot-schools',
+            (report.schools | length ~ ' school' ~ ('s' if report.schools | length != 1 else '')
+             ~ ' within walking distance. Numbers match the report.')
+            if report.schools else 'No schools within walking distance.',
+            on=true) }}
+
+        {{ ui.layer_toggle('activity', 'Street activity', 'dot-activity',
+            'Darker: more scheduled bus trips. A proxy for how busy a street is, not noise.') }}
+
+        {{ ui.layer_toggle('reach', report.commute.reach_minutes ~ '-minute reach', 'dot-commute',
+            ('At ' ~ report.commute.time_of_day.caption ~ ': '
+             ~ report.commute.n_stops_reachable ~ ' stops, starting from '
+             ~ report.commute.n_seed_stops ~ ' stops within walking distance ('
+             ~ report.commute.n_routes_available ~ ' routes).'
+             ~ ((' Central: ' ~ (report.commute.minutes_to_central | int) ~ ' min.')
+                if report.commute.minutes_to_central is not none else ''))
+            if report.commute.n_seed_stops else 'No bus stop within walking distance.',
+            on=true) }}
+
+        {{ ui.layer_toggle('prices', 'Prices by area', 'dot-market',
+            'Dark: prices rose over five years. Light: they fell. 300 m hexagons.') }}
+
+        {# The scope is stated because it is WIDER than the report's figure: the
+           Market section counts the ~900 m hexagon neighbourhood, this layer
+           covers 1 km so the map has useful context. Different numbers, each
+           labelled, rather than two numbers that look like they disagree. #}
+        {{ ui.layer_toggle('development', 'Development', 'dot-development',
+            'Solid squares: applications still in the pipeline, sized by cost. '
+            ~ 'Faint squares: already determined and over $1m — approved, not '
+            ~ 'necessarily built. Everything within 1 km.') }}
+      </div>
+
+      <a class="link" style="margin-top:auto"
+         href="/report?address={{ report.address.address_text | urlencode }}&at={{ report.commute.time_of_day.hour }}"
+         >Back to full report</a>
+    </aside>
+
+    <div id="map"
+         data-address="{{ report.address.address_text }}"
+         data-lat="{{ report.address.latitude }}"
+         data-lon="{{ report.address.longitude }}"
+         data-hour="{{ report.commute.time_of_day.hour }}">
+      <div class="map-legend">
+        <span><strong>{{ report.address.address_text }}</strong></span>
+        <span class="mono">{{ report.address.coordinates_label }}</span>
+        {% if not report.address.is_exact %}
+        <span>Street centre, ±{{ report.address.accuracy_m | round | int }} m</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

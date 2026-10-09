@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% import "_components/parts.html" as ui %}
+{% block title %}Enter an address in Sydney · {{ product_name }}{% endblock %}
+{% block head %}<script defer src="{{ url_for('static', filename='suggest.js') }}"></script>{% endblock %}
+
+{% block body %}
+<div class="start">
+  <header>
+    {{ ui.logo(product_name) }}
+    <a href="/report?address=59%20ENMORE%20ROAD%20NEWTOWN%202042"
+       style="font-size:14px;color:var(--color-ink-2);text-decoration:none">Sample report</a>
+  </header>
+
+  <main>
+    <div class="start-inner">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+        <h1>Enter an address in Sydney</h1>
+        <p class="subline">Get a report on schools, street activity, commute and prices.</p>
+      </div>
+
+      {{ ui.address_search(query, autofocus=true) }}
+
+      <div class="topics">
+        <span class="topic"><span class="dot dot-schools"></span>Schools</span>
+        <span class="topic"><span class="dot dot-activity"></span>Street activity</span>
+        <span class="topic"><span class="dot dot-commute"></span>Commute</span>
+        <span class="topic"><span class="dot dot-market"></span>Prices &amp; rent</span>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span>Data: {{ data_sources }}</span>
+  </footer>
+</div>
+{% endblock %}
