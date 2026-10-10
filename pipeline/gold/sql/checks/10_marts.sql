@@ -71,4 +71,31 @@ SELECT 'gold.traffic_ranking', 'sample_and_geometry_flagged', 'validity', 'warn'
          WHERE NOT flag_sample_data OR NOT flag_no_geometry),
        (SELECT count(*) FROM gold.traffic_ranking), NULL,
        jsonb_build_object('note',
-           '6 synthetic segments, no coordinates - cannot be mapped to stops');
+           '6 synthetic segments, no coordinates - cannot be mapped to stops')
+UNION ALL
+-- The "x% above/below" figures must exist wherever the value does and point
+-- the same way as the value against its reference.
+SELECT 'gold.lga_comparison', 'context_matches_values', 'consistency', 'error',
+       (SELECT count(*) FROM gold.lga_comparison
+         WHERE (median_rent_weekly_house IS NOT NULL
+                AND (rent_house_vs_ref_pct IS NULL
+                     OR sign(rent_house_vs_ref_pct)
+                        <> sign(median_rent_weekly_house - ref_rent_weekly_house)))
+            OR (median_sale_price IS NOT NULL
+                AND (sale_price_vs_sydney_pct IS NULL
+                     OR sign(sale_price_vs_sydney_pct)
+                        <> sign(median_sale_price - sydney_median_sale_price)))),
+       (SELECT count(*) FROM gold.lga_comparison), NULL,
+       (SELECT jsonb_build_object('ref_rent_house', max(ref_rent_weekly_house),
+                                  'sydney_median_sale_price', max(sydney_median_sale_price))
+          FROM gold.lga_comparison)
+UNION ALL
+SELECT 'gold.suburb_comparison', 'context_matches_values', 'consistency', 'error',
+       (SELECT count(*) FROM gold.suburb_comparison
+         WHERE median_price IS NOT NULL
+           AND (price_vs_sydney_pct IS NULL OR price_percentile IS NULL
+                OR price_percentile NOT BETWEEN 0 AND 100
+                OR sign(price_vs_sydney_pct) <> sign(median_price - sydney_median_price))),
+       (SELECT count(*) FROM gold.suburb_comparison), NULL,
+       (SELECT jsonb_build_object('sydney_median_price', max(sydney_median_price))
+          FROM gold.suburb_comparison);

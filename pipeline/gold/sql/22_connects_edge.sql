@@ -6,19 +6,19 @@
 --
 --  1. SPEED. The 20-minute reach has to be seeded from every stop within
 --     walking distance, not just the nearest one. In Neo4j that means one
---     Dijkstra per seed - measured at 3.1 s for 28 seeds, and batching the
---     Cypher into a single UNWIND made it 3.5 s, because the cost is the 28
---     full graph traversals, not the round-trips. The same answer from a
---     bounded multi-source recursive CTE over this table takes 0.03 s.
+--     Dijkstra per seed: 3.1 s for 28 seeds, and 3.5 s with the Cypher
+--     batched into a single UNWIND, because the cost is the 28 full graph
+--     traversals, not the round-trips. The same answer from a bounded
+--     multi-source recursive CTE over this table takes 0.03 s.
 --  2. TIME OF DAY. Switching band becomes switching column.
 --
 -- Neo4j still holds the graph for Cypher and GDS; this is a projection of the
 -- same edges, and connects_edge_matches_graph asserts the two cannot drift.
 --
--- NULL in a band column means NO SERVICE IN THAT BAND, and that is the real
--- time-of-day effect: 3,743 edges run only at peak and 5,542 only off-peak, so
--- changing band changes which edges exist at all, not just how fast they are
--- (band travel times differ by only ~6% on average).
+-- NULL in a band column means NO SERVICE IN THAT BAND, and that is where the
+-- time-of-day effect comes from: 3,743 edges run only at peak and 5,542 only
+-- off-peak, so changing band changes which edges exist at all, not just how
+-- fast they are (band travel times differ by only ~6% on average).
 --
 -- A band column is never NULL merely because every timing was a whole-minute
 -- 0 s artefact: if trips run, the edge gets the distance estimate instead, so

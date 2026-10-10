@@ -10,12 +10,12 @@
 --   precision = 'street'   26,566 street centres from silver.street_locality,
 --                          themselves derived from DA points. Used when the
 --                          typed address is not one of the above, which is the
---                          common case - most homes have never had a DA.
+--                          common case; most homes have never had a DA.
 --                          accuracy_m carries the street's own measured spread.
 --
 -- search_key is what the trigram index matches on: upper-cased, punctuation
 -- reduced to single spaces. Keeping it as a separate column (rather than
--- normalising in the query) is what lets the GIN index actually be used.
+-- normalising in the query) is what lets the trigram index actually be used.
 --
 -- pg_trgm gives fuzzy prefix/substring ranking over ~148k rows, so a partial or
 -- slightly-misspelled address still finds its street.
@@ -45,15 +45,14 @@ CREATE TABLE IF NOT EXISTS gold.address_point (
 --
 -- With a GIN trigram index the % operator produced a lossy bitmap of 56,044
 -- candidate rows for a three-word query, of which 55,726 were thrown away on
--- recheck after reading 4,721 heap blocks - 302 ms for one address lookup, the
--- single slowest thing the website did. GiST supports <-> nearest-neighbour
--- ordering, so Postgres walks the index in similarity order and stops at the
--- limit: the same five queries drop from 188 ms average to 39 ms.
--- Index build costs about 2.5 s at pipeline time.
--- Dropped first: the index METHOD changed from gin to gist, and
+-- recheck after reading 4,721 heap blocks: 302 ms for one address lookup, the
+-- slowest query on the website. GiST supports <-> nearest-neighbour ordering,
+-- so Postgres walks the index in similarity order and stops at the limit. The
+-- same five queries drop from 188 ms average to 39 ms.
+-- The index is dropped first because its method changed from gin to gist, and
 -- CREATE INDEX IF NOT EXISTS would silently keep a stale gin index that cannot
--- serve <-> at all. Rebuilding costs ~2.5 s, against a table this step
--- repopulates from scratch anyway.
+-- serve <-> at all. Rebuilding costs ~2.5 s at pipeline time, against a table
+-- this step repopulates from scratch anyway.
 DROP INDEX IF EXISTS gold.address_point_search_idx;
 CREATE INDEX address_point_search_idx
     ON gold.address_point USING gist (search_key gist_trgm_ops);
@@ -112,7 +111,7 @@ SELECT md5(upper(regexp_replace(trim(l.street_label), '[^A-Za-z0-9]+', ' ', 'g')
        'street',
        -- The street's own measured spread about its centre, floored at 50 m.
        -- A street built from a single DA point has a p90 spread of exactly 0,
-       -- which means "only one observation", not "perfectly located" - 8,787
+       -- which means "only one observation", not "perfectly located"; 8,787
        -- streets are in that position. Letting a street row claim 0 m would
        -- make it indistinguishable from an exact address.
        greatest(coalesce(l.geocode_spread_m, 300), 50),

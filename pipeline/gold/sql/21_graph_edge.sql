@@ -1,7 +1,6 @@
 -- gold.graph_edge - every relationship of the one graph.
 --
--- The two stop-to-stop types answer different questions, which is why both
--- exist rather than one being a compromise:
+-- The two stop-to-stop types answer different questions, so both exist:
 --
 --   ROUTE_SEGMENT  one per route+direction between two stops (47,047). Faithful
 --                  to GTFS: up to 21 routes run between the same pair of stops
@@ -21,22 +20,22 @@
 -- distinct failure modes have to be handled, and both are silent:
 --
 --   NULL  4,699 pairs have no usable peak figure. A missing property projects
---         into GDS as NaN, which propagates along the path - Dijkstra then
---         reports NaN for the cost AND picks a distorted route.
+--         into GDS as NaN, which propagates along the path: Dijkstra then
+--         reports NaN for the cost and picks a distorted route.
 --   ZERO  2,577 pairs average out to 0 s, because the trip-weighted averages
 --         include the whole-minute 0 s segments. A 0-weight edge is a free hop.
 --
 -- So the chain skips zeros as well as NULLs, and ends in a distance-based
--- estimate at 20 km/h - a plausible urban bus speed - for the pairs where the
--- timetable's minute granularity genuinely cannot resolve the hop:
+-- estimate at 20 km/h (a plausible urban bus speed) for the pairs where the
+-- timetable's minute granularity cannot resolve the hop:
 --
 --   best_peak -> avg_peak -> best_offpeak -> avg_offpeak -> distance estimate
 --
 -- weight_source names which one was used, so a routing answer can say exactly
 -- how much of it rested on an estimate rather than a timetable.
 --
--- The foreign keys to gold.graph_node are the point: a dangling edge is a bug,
--- and it should fail the load rather than quietly produce an orphan in Neo4j.
+-- A dangling edge is a bug, so the foreign keys to gold.graph_node make it fail
+-- the load instead of quietly producing an orphan in Neo4j.
 
 CREATE TABLE IF NOT EXISTS gold.graph_edge (
     rel_type   text        NOT NULL,

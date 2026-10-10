@@ -124,6 +124,8 @@ class Rank:
     n_ranked: int
     value: float | None = None
     unit: str = "suburbs"
+    vs_pct: float | None = None
+    reference: str = "the Sydney median"
 
     @property
     def known(self) -> bool:
@@ -145,6 +147,16 @@ class Rank:
     def summary(self) -> str:
         """'682nd of 776 suburbs'."""
         return f"{self.ordinal} of {self.n_ranked:,} {self.unit}"
+
+    @property
+    def context(self) -> str | None:
+        """'24% below the Sydney median', or None when there is no reference."""
+        if self.vs_pct is None:
+            return None
+        if abs(self.vs_pct) < 0.5:
+            return f"about the same as {self.reference}"
+        direction = "above" if self.vs_pct > 0 else "below"
+        return f"{abs(self.vs_pct):.0f}% {direction} {self.reference}"
 
 
 @dataclass(frozen=True)
@@ -444,7 +456,9 @@ def _rankings(conn, address: ResolvedAddress) -> Rankings | None:
         SELECT s.locality, s.n_sales, s.rank_median_price, s.rank_price_per_m2,
                s.rank_change_5y, s.n_ranked, s.n_ranked_change,
                s.median_price, s.price_per_m2, s.change_5y_pct,
-               s.lga_name, l.rank_median_rent_house, l.n_ranked_rent
+               s.lga_name, l.rank_median_rent_house, l.n_ranked_rent,
+               s.price_vs_sydney_pct, s.price_per_m2_vs_sydney_pct,
+               l.rent_house_vs_ref_pct
           FROM gold.suburb_comparison s
           LEFT JOIN gold.lga_comparison l ON l.lga_code = s.lga_code
          WHERE s.locality = %s
@@ -453,14 +467,17 @@ def _rankings(conn, address: ResolvedAddress) -> Rankings | None:
     ).fetchone()
     if row is None:
         return None
+    def pct(value) -> float | None:
+        return float(value) if value is not None else None
+
     return Rankings(
         locality=row[0],
         n_sales=row[1],
-        price=Rank(row[2], row[5], float(row[7]) if row[7] is not None else None),
-        price_per_m2=Rank(row[3], row[5],
-                          float(row[8]) if row[8] is not None else None),
-        growth=Rank(row[4], row[6], float(row[9]) if row[9] is not None else None),
-        rent_house=Rank(row[11], row[12] or 0, unit="LGAs"),
+        price=Rank(row[2], row[5], pct(row[7]), vs_pct=pct(row[13])),
+        price_per_m2=Rank(row[3], row[5], pct(row[8]), vs_pct=pct(row[14])),
+        growth=Rank(row[4], row[6], pct(row[9])),
+        rent_house=Rank(row[11], row[12] or 0, unit="LGAs", vs_pct=pct(row[15]),
+                        reference=f"the median of the {row[12] or 0} LGAs with rent data"),
         lga_name=row[10],
     )
 

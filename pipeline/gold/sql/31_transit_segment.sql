@@ -1,15 +1,15 @@
 -- gold.transit_segment - how busy the street outside is, as far as we can tell.
 --
 -- The design's section 02 is Noise: decibels, "nearest main road 120 m", heat
--- bands along roads. NO noise data exists in this project, and no road
--- centrelines either - the traffic source is 6 synthetic segments with no
+-- bands along roads. No noise data exists in this project, and no road
+-- centrelines either: the traffic source is 6 synthetic segments with no
 -- coordinates. So rather than invent decibels, this measures what we do have:
 -- scheduled bus traffic on real geometry.
 --
 --   28,340 segments, one per stop pair, with the 2-point line between them
---   trips_per_day 1 / 33 / 1,279 (min / median / max) - a real gradient
+--   trips_per_day 1 / 33 / 1,279 (min / median / max), a real gradient
 --
--- It is a TRANSIT ACTIVITY proxy and the UI says so. A busy bus corridor is a
+-- It is a transit-activity proxy and the UI says so. A busy bus corridor is a
 -- reasonable stand-in for a busy street front; it is not a sound measurement,
 -- and nothing here is labelled dB.
 --
@@ -46,8 +46,8 @@ INSERT INTO gold.transit_segment
     (from_stop_id, to_stop_id, geom, geom_m, length_m, trips_per_day,
      n_routes, route_short_names, activity_band, flag_long_segment)
 WITH collapsed AS (
-    -- several routes share a stop pair, so their trips add up: that is the
-    -- point, it is how busy the segment is in total
+    -- several routes share a stop pair, so their trips add up to how busy the
+    -- segment is in total
     SELECT e.from_stop_id,
            e.to_stop_id,
            (array_agg(e.geom   ORDER BY e.edge_key))[1] AS geom,

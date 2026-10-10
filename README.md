@@ -57,24 +57,24 @@ python -m web.app                      # http://127.0.0.1:5000
 | Screen | What it does |
 |---|---|
 | `/` | Type an address. Autocomplete over 147,561 points, trigram-ranked |
-| `/report?address=…&at=HH` | The A4 page: schools, street activity, commute, market. "Download PDF" is the browser's own print — the A4 sheet *is* the print target (`@page { size: A4 }`) |
+| `/report?address=…&at=HH` | The A4 page: schools, street activity, commute, market. "Download PDF" is the browser's own print; the A4 sheet is the print target (`@page { size: A4 }`) |
 | `/map?address=…&at=HH` | The same findings as four toggleable Leaflet layers |
 
 `?at=HH` is the time of day. It changes the reachable area and the trip to
 Central, and the URL carries it so a link reproduces exactly what you saw.
 
-Built from the design handoff in `design/` — `DESIGN.md` is the spec and
+Built from the design handoff in `design/`. `DESIGN.md` is the spec and
 `design/tokens.css` is copied verbatim into `web/static/` as the single source
 of every colour, size and radius.
 
-### The PDF really is one A4 page
+### Printing the report on one A4 page
 
-"Download PDF" is the browser's own print; the A4 sheet on screen *is* the print
-target. Getting that to actually produce one page took fixing three faults, the
-first of which was doing most of the damage:
+"Download PDF" is the browser's own print; the A4 sheet on screen is the print
+target. Getting that to produce one page needed three fixes, and the first did
+most of the work:
 
 1. **The responsive breakpoint also matched the paper.** A4 is ~794 px wide at
-   96 dpi, so an unscoped `@media (max-width: 860px)` applied *when printing* —
+   96 dpi, so an unscoped `@media (max-width: 860px)` applied when printing:
    the 2×2 grid collapsed to one column and the report ran to two pages. The
    responsive block is now `@media screen and (...)`, and the print block
    re-asserts the grid explicitly.
@@ -95,36 +95,35 @@ Measured afterwards across five addresses of different lengths, against the
 | McEvoy Road, Padstow | 918 px | 114 px |
 | Richards Road, Appin | 873 px | 159 px |
 
-The compaction is deliberately light — body text stays at the design's 13 px —
-because the breakpoint fix did most of the work. `web/static/print.js` is the
-guarantee for anything unusual: it measures on `beforeprint` and scales only if
-a particularly full report would still overflow.
+The compaction is light (body text stays at the design's 13 px) because the
+breakpoint fix did most of the work. `web/static/print.js` covers anything
+unusual: it measures on `beforeprint` and scales only if a particularly full
+report would still overflow.
 
-**Everything on screen comes from `web/report.py:get_report()`.** Templates never
-query the database, so the report and the map cannot disagree — and
-`test/web_smoke.py` re-runs the same figures straight against `silver` to prove
+Everything on screen comes from `web/report.py:get_report()`. Templates never
+query the database, so the report and the map cannot disagree, and
+`test/web_smoke.py` re-runs the same figures straight against `silver` to check
 the page matches the warehouse.
 
-### Section 02 is street activity, not noise
+### Section 02: street activity instead of noise
 
-The design's second section is Noise — decibels, nearest main road, heat bands.
-**This project has no noise data and no road centrelines**, and its traffic
+The design's second section is Noise (decibels, nearest main road, heat bands).
+This project has no noise data and no road centrelines, and its traffic
 source is six synthetic segments with no coordinates. Rather than invent
 decibels, section 02 reports scheduled bus traffic on real geometry
 (`gold.transit_segment`, 28,340 segments, 1–1,279 trips/day) as a street-activity
 proxy, and says so on the page.
 
-### Reach is seeded from every nearby stop, not the nearest one
+### Reach is seeded from every nearby stop
 
 The first version started the 20-minute search at the single closest stop. For
-`HARRIS STREET, ULTIMO` that is *Harris St At Macarthur St* — 16 m away, served
-by **one** route — while **28 stops within 800 m serve 41 routes**, including
+`HARRIS STREET, ULTIMO` that is *Harris St At Macarthur St*, 16 m away and served
+by one route, while 28 stops within 800 m serve 41 routes, including
 UTS Broadway (15 routes) and Central Station (30 routes), both ~520 m away.
-Nobody walks to the nearest stop if a hub is two minutes further.
 
-The search now starts from **every** stop in walking distance, each seeded with
-the time it takes to walk there. For Ultimo that is **286 reachable stops
-instead of 28** — 10× more network, and the correct answer.
+The search now starts from every stop in walking distance, each seeded with
+the time it takes to walk there. For Ultimo that gives 286 reachable stops
+instead of 28, 10× more network.
 
 It also moved from Neo4j to Postgres, because multi-source means one Dijkstra
 per seed in GDS:
@@ -135,33 +134,32 @@ per seed in GDS:
 | Neo4j GDS, one `UNWIND` statement | 286 stops | 3.51 s |
 | **Postgres recursive CTE over `gold.connects_edge`** | **286 stops** | **0.03 s** |
 
-Batching the Cypher does not help — the cost is the 28 full traversals, not the
+Batching the Cypher does not help: the cost is the 28 full traversals, not the
 round-trips. Neo4j still holds the graph for Cypher and GDS; `gold.connects_edge`
 is a relational projection of the same edges, and a quality check asserts the two
 cannot drift.
 
 ### Time of day
 
-The hour picker maps onto the two service bands the data has — there is no raw
+The hour picker maps onto the two service bands the data has. There is no raw
 GTFS feed, so hourly detail does not exist and the caption always names the band
-an hour resolved to. The bands are not cosmetic: travel times differ by only ~6%,
-but **1,703 stop pairs run at peak only and 2,375 off-peak only**, so changing
+an hour resolved to. The bands matter: travel times differ by only ~6%,
+but 1,703 stop pairs run at peak only and 2,375 off-peak only, so changing
 band changes which connections exist. Ultimo reaches 172 stops at 08:00 and 420
 at 14:00.
 
-Waiting and transfer time are **not** counted — frequency data exists, but the
+Waiting and transfer time are not counted. Frequency data exists, but the
 band window lengths were lost upstream, so turning trip counts into minutes would
 be invention.
 
 ### Rankings
 
-`gold.suburb_comparison` ranks **776 suburbs** (every locality with ≥30 usable
+`gold.suburb_comparison` ranks 776 suburbs (every locality with ≥30 usable
 sales) on median price, price per m² and 5-year growth. Rent ranks separately, out
-of **6 LGAs**, because that is all the rent data covers — the denominator is
+of 6 LGAs, because that is all the rent data covers; the denominator is
 always printed next to the rank.
 
-Both price measures are published because they disagree, and the disagreement is
-the point:
+Both price measures are published because they disagree:
 
 | | Ultimo | Newtown | Mosman | Blacktown |
 |---|---:|---:|---:|---:|
@@ -169,14 +167,14 @@ the point:
 | price per m² | $13,289 · **45th** | $12,762 · 52nd | $11,512 · 64th | $2,076 · 491st |
 
 Ultimo looks like one of Sydney's cheaper suburbs by median and one of its dearest
-per square metre — it is mostly small apartments. The report raises that
+per square metre, because it is mostly small apartments. The report raises that
 automatically as a caveat whenever the two ranks diverge by more than 200 places.
 
 ### The development layer
 
-Square markers, not circles — DESIGN.md §7 requires a layer to be identifiable
+The layer uses square markers, not circles: DESIGN.md §7 requires a layer to be identifiable
 without relying on colour, and the schools are already circles. The fifth colour
-(`--layer-development`, brick red) is defined in `web/static/app.css`, **not** in
+(`--layer-development`, brick red) is defined in `web/static/app.css`, not in
 `tokens.css`, so that file stays the handoff's own copied verbatim.
 
 Within 1 km of a city address there are ~1,878 applications, so plotting all of
@@ -184,7 +182,7 @@ them would be unreadable. The layer shows the ~57 still in the pipeline solid,
 plus determined ones over $1m (~300) faint. Marker size is √cost, so a $200m
 tower reads bigger than a $2m renovation without swallowing the block.
 
-Note the scopes differ on purpose and each is labelled: the report's investment
+The scopes differ on purpose and each is labelled: the report's investment
 figure covers the ~900 m hexagon neighbourhood, the map layer covers 1 km.
 
 ### Development investment
@@ -199,11 +197,11 @@ determined 2019 application describes what already happened. Sydney-wide that is
 
 `gold.address_point` is the gazetteer: 120,995 exact development-application
 addresses (`accuracy_m = 0`) plus 26,566 street centres (`accuracy_m` = that
-street's own measured spread, floored at 50 m). Two guards keep it honest:
+street's own measured spread, floored at 50 m). Two guards apply:
 
 - Typing a house number we do not have falls back to the **street centre** rather
   than snapping to a neighbour's house and claiming exact precision.
-- A query that scores below 0.50 trigram similarity returns **nothing**. Real
+- A query that scores below 0.50 trigram similarity returns nothing. Real
   queries score 0.63–1.00; an invented street scores 0.37.
 
 The precision used is shown in the suggestion list, on the map, and in the
@@ -247,9 +245,9 @@ is therefore checkable in SQL and still builds when Neo4j is down.
 | `IN_LGA` | Stop/School→LGA | 23,545 | everything in an LGA, and the rent comparison |
 | `SERVES` | Route→Stop | 46,265 | which stops a route serves |
 
-**`travel_time_s` is the routing weight and is never NULL or zero.** Both would
+`travel_time_s` is the routing weight and is never NULL or zero. Both would
 break GDS silently: a missing property projects as NaN and propagates along the
-path (Dijkstra then returns NaN *and* picks a distorted route), and a 0-weight
+path (Dijkstra then returns NaN and picks a distorted route), and a 0-weight
 edge is a free hop. It falls back
 `best_peak → avg_peak → best_offpeak → avg_offpeak → distance at 20 km/h`, and
 `weight_source` on every edge says which was used (83% real peak timings, 6.6%
@@ -281,6 +279,8 @@ Neo4j Browser: http://localhost:7474 (`grep NEO4J_PASSWORD .env`).
 |---|---|---|
 | `gold.lga_comparison` | 33 LGAs | highest rent, most development, dearest sales, most stops - with `rank_*` columns so "highest" is a column, not a client-side sort |
 | `gold.traffic_ranking` | 6 segments | most traffic by rush / non-rush / night |
+
+`gold.lga_comparison` and `gold.suburb_comparison` also carry the gap to a reference in percent (`sale_price_vs_sydney_pct`, `rent_house_vs_ref_pct` / `rent_flat_vs_ref_pct` against the median of the 6 LGAs with rent, `price_vs_sydney_pct`, `price_per_m2_vs_sydney_pct`) plus a 0-100 percentile on suburbs (`price_percentile`, `price_per_m2_percentile`), and the report shows it under each rank, e.g. "24% below the Sydney median".
 
 `silver.lga` is the conformed LGA dimension these rest on. Four sources spell
 the same LGA four ways (`Parramatta` / `City of Parramatta Council` /

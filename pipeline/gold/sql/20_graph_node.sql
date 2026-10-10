@@ -1,12 +1,12 @@
 -- gold.graph_node - every node of the one graph.
 --
--- One generic table rather than four typed ones, because the Neo4j loader then
--- needs no per-label code and the graph is a single object you can count, diff
--- and check. `properties` is jsonb because that is literally what a Neo4j node
+-- One generic table rather than four typed ones, because then the Neo4j loader
+-- needs no per-label code and the graph is a single object that can be counted,
+-- diffed and checked. `properties` is jsonb because that is what a Neo4j node
 -- takes, so the loader is UNWIND + SET n += r.props and nothing more.
 --
---   Stop    the reference point. Carries its metadata as properties - rent,
---           sales, development, schools nearby, traffic - so one node answers
+--   Stop    the reference point. Carries its metadata as properties (rent,
+--           sales, development, schools nearby, traffic), so one node answers
 --           "what is happening around this stop" without a traversal.
 --   School  its own node, so "which stops share a school" is a traversal.
 --           A school 200 m from 13 stops is one node with 13 edges, not 13
@@ -15,7 +15,7 @@
 --           hang off the graph rather than off a join.
 --   Route   its own node, so "which stops does the 545 serve" is a traversal.
 --
--- Hexagons are deliberately NOT nodes: 181,492 of them, mostly empty, and the
+-- Hexagons are not nodes: there are 181,492 of them, mostly empty, and the
 -- hexagon figure is already a property of the stop that sits in it.
 
 CREATE TABLE IF NOT EXISTS gold.graph_node (

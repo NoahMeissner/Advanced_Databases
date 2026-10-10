@@ -1,12 +1,12 @@
 # @Noah Meissner 9.10.2026
 """Gold-Layer: the serving layer - one graph, plus the comparison marts.
 
-Gold reads SILVER ONLY, never bronze (the team contract). Anything built from
+Gold reads silver only, never bronze (the team contract). Anything built from
 two or more sources belongs here, which is why the graph and the cross-LGA
 comparison live in gold while per-source cleaning stayed in silver.
 
 The SQL builds the graph as two tables in Postgres (gold.graph_node /
-gold.graph_edge). pipeline/gold/graph.py then pushes those into Neo4j - keeping
+gold.graph_edge). pipeline/gold/graph.py then pushes those into Neo4j. Keeping
 them separate means the graph is checkable in SQL and still builds when Neo4j
 is down.
 
@@ -29,7 +29,7 @@ STEPS = {
     "traffic_ranking": Step("11_traffic_ranking.sql", "traffic_ranking"),
     "suburb_comparison": Step("12_suburb_comparison.sql", "suburb_comparison"),
     # graph_node reads gold.lga_comparison for the LGA node properties, so the
-    # marts have to be built first - this order is the dependency graph.
+    # marts have to be built first.
     "graph_node":      Step("20_graph_node.sql", "graph_node"),
     "graph_edge":      Step("21_graph_edge.sql", "graph_edge"),
     # the relational routing table the website's reach search uses

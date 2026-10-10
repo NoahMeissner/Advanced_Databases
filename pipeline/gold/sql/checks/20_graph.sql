@@ -1,9 +1,9 @@
 -- Checks for the graph itself.
 --
 -- The graph is a projection of silver, so most of these assert that nothing was
--- lost or invented on the way. The ones that matter most are the CONNECTS
--- checks: collapsing 47,047 route segments into 28,340 routing edges is the one
--- place a plausible-looking but wrong number can be introduced.
+-- lost or invented on the way. The CONNECTS checks matter most: collapsing
+-- 47,047 route segments into 28,340 routing edges is where a plausible-looking
+-- but wrong number is most likely to be introduced.
 
 SELECT 'gold.graph_node'::text, 'node_key_unique'::text, 'uniqueness'::text,
        'error'::text,
@@ -47,7 +47,7 @@ SELECT 'gold.graph_edge', 'connects_collapses_correctly', 'consistency', 'error'
        NULL, NULL
 UNION ALL
 -- best_peak_s must really be the minimum over the pair's non-zero segments.
--- This is the check that would catch a silently wrong routing weight.
+-- It catches a silently wrong routing weight.
 SELECT 'gold.graph_edge', 'connects_best_is_min', 'accuracy', 'error',
        (SELECT count(*) FROM gold.graph_edge g
          JOIN (SELECT e.from_stop_id, e.to_stop_id,
@@ -71,8 +71,8 @@ SELECT 'gold.graph_edge', 'connects_excludes_zero_timepoint', 'validity', 'error
 UNION ALL
 -- The routing weight must never be NULL. A missing property projects into GDS
 -- as NaN, which propagates through the whole path: Dijkstra then reports NaN
--- for the total cost AND picks a distorted route. This is the check that
--- catches it, because the node and edge counts look perfect either way.
+-- for the total cost AND picks a distorted route. The node and edge counts look
+-- perfect either way, so only this check catches it.
 SELECT 'gold.graph_edge', 'connects_weight_never_null', 'completeness', 'error',
        (SELECT count(*) FROM gold.graph_edge
          WHERE rel_type = 'CONNECTS'

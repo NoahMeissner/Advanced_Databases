@@ -58,7 +58,7 @@ def create_constraints(session) -> None:
 
 
 def reset(session) -> None:
-    """Deletes the whole graph, in batches so the heap is never the limit."""
+    """Deletes the whole graph in batches, to keep each transaction's heap use bounded."""
     print("  deleting existing graph ...")
     while True:
         summary = session.run(

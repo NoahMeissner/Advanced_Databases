@@ -1,10 +1,10 @@
 -- gold.traffic_ranking - which segments carry the most traffic.
 --
--- Deliberately small, and deliberately self-labelling. The traffic source on
+-- Kept small and self-labelling. The traffic source on
 -- disk is a 432-row sample: 6 synthetic segment ids ('SEG001'..'SEG006') over
 -- 3 days, with NO coordinates and no reference file that would locate them.
 --
--- So two things are true at once and both belong in the table rather than only
+-- Both limits are recorded as flags in the table rather than only
 -- in a README:
 --   flag_sample_data   this ranks 6 made-up segments, not Sydney's roads
 --   flag_no_geometry   the segment cannot be placed, so no stop can inherit a
@@ -12,8 +12,8 @@
 --
 -- SEG004 is excluded from the usable aggregates upstream because every one of
 -- its hours is quality_flag = 'caution', so it appears here with NULL measures
--- rather than being silently dropped - that is the difference between "no
--- traffic" and "no trustworthy reading".
+-- rather than being silently dropped. That keeps "no traffic" distinct from
+-- "no trustworthy reading".
 
 CREATE TABLE IF NOT EXISTS gold.traffic_ranking (
     segment_id          text        PRIMARY KEY,

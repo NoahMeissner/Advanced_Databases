@@ -75,10 +75,11 @@
 </header>
 {% endmacro %}
 
-{# A rank, phrased with its real denominator so "2nd" never implies Sydney-wide. #}
+{# A rank, phrased with its real denominator so "2nd" never implies Sydney-wide,
+   plus how far the value sits from its reference so the rank has a scale. #}
 {% macro rank_row(label, rank) %}
 <div class="row">
-  <span class="grow">{{ label }}</span>
+  <span class="grow">{{ label }}{% if rank.context %}<br><span class="note">{{ rank.context }}</span>{% endif %}</span>
   <span class="row-value">{{ rank.summary }}</span>
 </div>
 {% endmacro %}

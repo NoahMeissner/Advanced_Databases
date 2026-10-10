@@ -1,9 +1,9 @@
 -- Checks for the routing table and the suburb rankings.
 --
 -- gold.connects_edge is a second copy of edges that also live in
--- gold.graph_edge and in Neo4j. Two copies that can disagree is exactly how a
--- map and a report start telling a user different things, so the first check
--- is that they cannot drift.
+-- gold.graph_edge and in Neo4j. If the copies disagree, a map and a report
+-- start telling a user different things, so the first check is that they
+-- cannot drift.
 
 SELECT 'gold.connects_edge'::text, 'matches_graph_edge'::text,
        'consistency'::text, 'error'::text,
@@ -36,7 +36,7 @@ SELECT 'gold.connects_edge', 'serves_some_band', 'completeness', 'error',
          WHERE peak_s IS NULL AND offpeak_s IS NULL),
        (SELECT count(*) FROM gold.connects_edge), NULL, NULL
 UNION ALL
--- The band split IS the time-of-day effect, so its size is worth watching:
+-- The band split is the time-of-day effect, so its size is worth watching:
 -- travel times differ only ~6% between bands, but which edges exist differs a
 -- lot, and that is what moves the reachable area.
 SELECT 'gold.connects_edge', 'band_coverage', 'completeness', 'warn',
